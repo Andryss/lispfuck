@@ -1,0 +1,4 @@
+(set name (read))
+(print "Hello, ")
+(print name)
+(print "!")

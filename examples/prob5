@@ -11,4 +11,5 @@
       1
       (lcm n (smallest_multiple (- n 1)))))
 
-(print (format "Smallest multiple: %d" (smallest_multiple 20)))
+(print "Smallest multiple: ")
+(print (smallest_multiple 20))
