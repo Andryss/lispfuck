@@ -4,36 +4,36 @@ import re
 import sys
 
 RESERVED = "RESERVED"
+FUNC = "FUNC"
 INT = "INT"
 STR = "STR"
 ID = "ID"
 
 token_expressions = [
-    (r"[ \n\t]+",               None),
-    (r"#[^\n]*",                None),
-    (r"\:=",                    RESERVED),
-    (r"\(",                     RESERVED),
-    (r"\)",                     RESERVED),
-    (r"\+",                     RESERVED),
-    (r"-",                      RESERVED),
-    (r"\*",                     RESERVED),
-    (r"/",                      RESERVED),
-    (r"<=",                     RESERVED),
-    (r"<",                      RESERVED),
-    (r">=",                     RESERVED),
-    (r">",                      RESERVED),
-    (r"=",                      RESERVED),
-    (r"and",                    RESERVED),
-    (r"or",                     RESERVED),
-    (r"not",                    RESERVED),
-    (r"if",                     RESERVED),
-    (r"mod",                    RESERVED),
-    (r"defun",                  RESERVED),
-    (r"print",                  RESERVED),
-    (r"format",                 RESERVED),
-    (r"[0-9]+",                 INT),
-    (r"([\"\"`])(.*?)\1",       STR),
-    (r"[A-Za-z][A-Za-z0-9_]*",  ID),
+    (r"[ \n\t]+", None),
+    (r"#[^\n]*", None),
+    (r"\(", RESERVED),
+    (r"\)", RESERVED),
+    (r"\+", RESERVED),
+    (r"-", RESERVED),
+    (r"\*", RESERVED),
+    (r"/", RESERVED),
+    (r"<=", RESERVED),
+    (r"<", RESERVED),
+    (r">=", RESERVED),
+    (r">", RESERVED),
+    (r"=", RESERVED),
+    (r"and", RESERVED),
+    (r"or", RESERVED),
+    (r"not", RESERVED),
+    (r"if", RESERVED),
+    (r"defun", RESERVED),
+    (r"mod", FUNC),
+    (r"print", FUNC),
+    (r"read", FUNC),
+    (r"[0-9]+", INT),
+    (r"([\"\"`])(.*?)\1", STR),
+    (r"[A-Za-z][A-Za-z0-9_]*", ID),
 ]
 
 
