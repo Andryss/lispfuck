@@ -7,10 +7,27 @@ import lexer
 
 
 class ASTNode:
-    def __init__(self, token=None, parent=None):
+    def __init__(self, token: str | None, parent: ASTNode | None):
         self.token = token
         self.parent = parent
         self.children = []
+
+
+class Statement:
+    pass
+
+
+class InvokeStatement:
+    def __init__(self, func: str | None, args: list[Statement] | None):
+        self.func = func
+        self.args = args
+
+
+class DefunStatement:
+    def __init__(self, name: str | None, args: list[str] | None, body: Statement | None):
+        self.name = name
+        self.args = args
+        self.body = body
 
 
 def build_ast(tokens: list[lexer.TokenInfo]) -> ASTNode:
