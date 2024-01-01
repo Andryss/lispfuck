@@ -29,7 +29,8 @@ token_expressions = [
     (r"if", RESERVED),
     (r"defun", RESERVED),
     (r"mod", FUNC),
-    (r"print", FUNC),
+    (r"prints", FUNC),
+    (r"printi", FUNC),
     (r"read", FUNC),
     (r"[0-9]+", INT),
     (r"([\"\"`])(.*?)\1", STR),
@@ -42,6 +43,9 @@ class TokenInfo:
         self.tag = tag
         self.string = string
         self.pos = pos
+
+    def __str__(self):
+        return f'TokenInfo(string={self.string},tag={self.tag},pos={self.pos})'
 
 
 def lex(characters: str, token_exprs: list[tuple[str, str]]):

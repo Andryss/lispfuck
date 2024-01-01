@@ -7,31 +7,84 @@ import lexer
 
 
 class ASTNode:
-    def __init__(self, token: str | None, parent: ASTNode | None):
+    def __init__(self, token: lexer.TokenInfo | None = None, parent: ASTNode | None = None,
+                 children: list[ASTNode] | None = None):
         self.token = token
         self.parent = parent
-        self.children = []
+        self.children = [] if children is None else children
+
+
+INT_TYPE = "INT"
+STR_TYPE = "STRING"
+UNK_TYPE = "UNKNOWN"
+
+
+class FuncInfo:
+    def __init__(self, name: str, args: list[str] = (), ret: str = UNK_TYPE):
+        self.name = name
+        self.args = args
+        self.ret = ret
+        
+        
+predefined_funcs: dict[str, FuncInfo] = {
+    "prints": FuncInfo("prints", [STR_TYPE], INT_TYPE),
+    "printi": FuncInfo("printi", [INT_TYPE], INT_TYPE),
+    "read": FuncInfo("read", [], STR_TYPE)
+}
 
 
 class Statement:
-    pass
-
-
-class InvokeStatement:
-    def __init__(self, func: str | None, args: list[Statement] | None):
-        self.func = func
-        self.args = args
-
-
-class DefunStatement:
-    def __init__(self, name: str | None, args: list[str] | None, body: Statement | None):
+    def __init__(self, name: str | None = None, ret_type: str = UNK_TYPE, args: list[Statement] | None = None):
         self.name = name
-        self.args = args
-        self.body = body
+        self.ret_type = ret_type
+        self.args = [] if args is None else args
+        
+        
+def const_statement(node: ASTNode) -> Statement:
+    token = node.token
+    assert token.tag in (lexer.INT, lexer.STR), f"Unknown const type {token.tag}"
+    const_type: str
+    if token.tag == lexer.INT:
+        const_type = INT_TYPE
+    else:
+        const_type = STR_TYPE
+    return Statement(node.token.string, const_type)
 
 
+def invoke_statement(node: ASTNode) -> Statement:
+    children = node.children
+    assert len(children[0].children) == 0, "Name of statement must be string"
+    name = children[0].token.string
+    assert name in predefined_funcs, f"Unknown func {name}"
+    func = predefined_funcs[name]
+    children_nodes = children[1:]
+    assert len(func.args) == len(children_nodes), f"Wrong amount of arguments for func {name}"
+    children_statements = []
+    for i in range(len(children_nodes)):
+        statement = ast_to_statement(children_nodes[i])
+        assert func.args[i] == statement.ret_type, f"Wrong ret_type of {name} {i} argument, " \
+                                                   f"expected: {func.args[i]}, got: {statement.ret_type}"
+        children_statements.append(statement)
+    return Statement(name, func.ret, children_statements)
+        
+        
+def ast_to_statement(node: ASTNode) -> Statement:
+    children = node.children
+    if len(children) == 0:
+        return const_statement(node)
+    else:
+        return invoke_statement(node)
+
+
+def ast_root_to_statements(root: ASTNode) -> list[Statement]:
+    statements = []
+    for node in root.children:
+        statements.append(ast_to_statement(node))
+    return statements
+            
+        
 def build_ast(tokens: list[lexer.TokenInfo]) -> ASTNode:
-    root = ASTNode(None)
+    root = ASTNode()
     node = root
     for token in tokens:
         if token.string == "(":
@@ -56,8 +109,15 @@ def translate(src):
     tokens = extract_tokens(src)
     logging.debug(f"Extracted {len(tokens)} tokens")
 
+    logging.debug("Building ast from tokens")
     ast = build_ast(tokens)
-    print(ast)
+    logging.debug("Built ast")
+
+    logging.debug("Translating ast to statements")
+    statements = ast_root_to_statements(ast)
+    logging.debug(f"Translated ast to {len(statements)} statements")
+
+    print(statements)
     return tokens
 
 
