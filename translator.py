@@ -24,8 +24,8 @@ class FuncInfo:
         self.name = name
         self.args = args
         self.ret = ret
-        
-        
+
+
 predefined_funcs: dict[str, FuncInfo] = {
     "prints": FuncInfo("prints", [STR_TYPE], INT_TYPE),
     "printi": FuncInfo("printi", [INT_TYPE], INT_TYPE),
@@ -38,8 +38,8 @@ class Statement:
         self.name = name
         self.ret_type = ret_type
         self.args = [] if args is None else args
-        
-        
+
+
 def const_statement(node: ASTNode) -> Statement:
     token = node.token
     assert token.tag in (lexer.INT, lexer.STR), f"Unknown const type {token.tag}"
@@ -66,14 +66,13 @@ def invoke_statement(node: ASTNode) -> Statement:
                                                    f"expected: {func.args[i]}, got: {statement.ret_type}"
         children_statements.append(statement)
     return Statement(name, func.ret, children_statements)
-        
-        
+
+
 def ast_to_statement(node: ASTNode) -> Statement:
     children = node.children
     if len(children) == 0:
         return const_statement(node)
-    else:
-        return invoke_statement(node)
+    return invoke_statement(node)
 
 
 def ast_root_to_statements(root: ASTNode) -> list[Statement]:
@@ -81,8 +80,8 @@ def ast_root_to_statements(root: ASTNode) -> list[Statement]:
     for node in root.children:
         statements.append(ast_to_statement(node))
     return statements
-            
-        
+
+
 def build_ast(tokens: list[lexer.TokenInfo]) -> ASTNode:
     root = ASTNode()
     node = root

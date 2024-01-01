@@ -45,7 +45,7 @@ class TokenInfo:
         self.pos = pos
 
     def __str__(self):
-        return f'TokenInfo(string={self.string},tag={self.tag},pos={self.pos})'
+        return f"TokenInfo(string={self.string},tag={self.tag},pos={self.pos})"
 
 
 def lex(characters: str, token_exprs: list[tuple[str, str]]):
