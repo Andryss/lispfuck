@@ -96,7 +96,7 @@ predefined_funcs: dict[str, FuncInfo] = {
 
 class GlobalContext:
     def __init__(self):
-        self.function_table = {}
+        self.function_table: dict[str, FuncInfo] = {}
         self.const_table = {}
         self.const_pointer = 0
 
@@ -229,20 +229,50 @@ def translate_statement(statement: Statement) -> list[Term]:
 
 
 class Code:
-    def __init__(self, context: GlobalContext):
-        self.data_memory = []
-        self.data_pointer = 0
-        self.instr_memory = []
+    def __init__(self, context: GlobalContext, start_code: list[Term]):
+        self.data_memory: list[tuple[int, int, int | str]] = []
+
+        self.instr_memory: list[tuple[int, int, str, list[Term]]] = []
         self.instr_pointer = 0
-        # TODO: impl
+        self.func_table = {}
+
+        for symbol, addr in sorted(context.const_table.items(), key=lambda i: i[1]):
+            size: int
+            if isinstance(symbol, int):
+                size = 1
+            elif isinstance(symbol, str):
+                size = len(symbol) + 1
+            else:
+                raise NotImplementedError(f"unknown symbol, got {symbol}")
+            self.data_memory.append((addr, size, symbol))
+
+        self.instr_memory.append((0, 1, "#", [Term(Opcode.BRANCH_ANY, "start")]))
+        self.instr_pointer += 1
+        for func_info in context.function_table.values():
+            func_code = func_info.code
+            self.func_table[func_info.name] = self.instr_pointer
+            self.instr_memory.append((self.instr_pointer, len(func_code), func_info.name, func_code))
+            self.instr_pointer += len(func_code)
+
+        self.func_table["start"] = self.instr_pointer
+        self.instr_memory.append((self.instr_pointer, len(start_code), "start", start_code))
+
+        for block in self.instr_memory:
+            for instr in block[3]:
+                if isinstance(instr.arg, str):
+                    assert instr.arg in self.func_table, f"unknown func, got {instr.arg}"
+                    instr.arg = Address(AddressType.ABSOLUTE, self.func_table[instr.arg])
+
+    def __len__(self):
+        return sum(map(lambda blk: blk[1], self.instr_memory))
 
 
-def translate_into_code(statements: list[Statement]) -> list[Term]:
-    code = []
+def translate_into_code(statements: list[Statement]) -> Code:
+    start_code = []
     for s in statements:
-        code.extend(translate_statement(s))
-    code.append(Term(Opcode.HALT))
-    return code
+        start_code.extend(translate_statement(s))
+    start_code.append(Term(Opcode.HALT))
+    return Code(global_context, start_code)
 
 
 def translate(src):
@@ -261,9 +291,6 @@ def translate(src):
     logging.debug("Translating statements into code")
     code = translate_into_code(statements)
     logging.debug(f"Translated to {len(code)} instructions")
-
-    for inst in code:
-        assert not isinstance(inst.arg, str), f"Code contains symbols, got {inst}"
 
     return code
 

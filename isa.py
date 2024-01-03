@@ -41,7 +41,13 @@ class Address:
         self.val = val
 
     def __str__(self):
-        return f"{self.kind.value}{self.val}"
+        val_str: str = hex(self.val)
+        if self.kind in (AddressType.RELATIVE_IPR, AddressType.RELATIVE_SPR, AddressType.RELATIVE_INDIRECT_SPR):
+            if self.val > 0:
+                val_str = "+" + val_str
+            elif self.val == 0:
+                val_str = ""
+        return f"{self.kind.value}{val_str}"
 
 
 class Term:
