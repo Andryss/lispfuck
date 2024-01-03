@@ -33,7 +33,7 @@ token_expressions = [
     (r"printi", FUNC),
     (r"read", FUNC),
     (r"[0-9]+", INT),
-    (r"([\"\"`])(.*?)\1", STR),
+    (r"\"(.*?)\"", STR),
     (r"[A-Za-z][A-Za-z0-9_]*", ID),
 ]
 

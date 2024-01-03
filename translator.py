@@ -2,8 +2,14 @@ from __future__ import annotations
 
 import logging
 import sys
+from enum import Enum
 
 import lexer
+from isa import Address, AddressType, Opcode, Term
+
+
+def extract_tokens(src) -> list[lexer.TokenInfo]:
+    return lexer.lex(src, lexer.token_expressions)
 
 
 class ASTNode:
@@ -14,41 +20,149 @@ class ASTNode:
         self.children = [] if children is None else children
 
 
-INT_TYPE = "INT"
-STR_TYPE = "STRING"
-UNK_TYPE = "UNKNOWN"
+def build_ast(tokens: list[lexer.TokenInfo]) -> ASTNode:
+    root = ASTNode()
+    node = root
+    for token in tokens:
+        if token.string == "(":
+            child = ASTNode(token, node)
+            node.children.append(child)
+            node = child
+        elif token.string == ")":
+            assert node.parent, "Wrong parenthesis count"
+            node = node.parent
+        else:
+            if token.tag == lexer.STR:
+                token.string = token.string[1:-1]
+            node.children.append(ASTNode(token, node))
+    assert node == root, "Wrong parenthesis count"
+    return root
+
+
+class Type(Enum):
+    INT_TYPE = "INT"
+    STR_TYPE = "STRING"
+    UNK_TYPE = "UNKNOWN"
 
 
 class FuncInfo:
-    def __init__(self, name: str, args: list[str] = (), ret: str = UNK_TYPE):
+    def __init__(self, name: str, args: list[Type] = (), ret: Type = Type.UNK_TYPE, code: list[Term] | None = None):
         self.name = name
         self.args = args
         self.ret = ret
+        self.code = [] if code is None else code
 
 
 predefined_funcs: dict[str, FuncInfo] = {
-    "prints": FuncInfo("prints", [STR_TYPE], INT_TYPE),
-    "printi": FuncInfo("printi", [INT_TYPE], INT_TYPE),
-    "read": FuncInfo("read", [], STR_TYPE)
+    "prints": FuncInfo("prints", [Type.STR_TYPE], Type.INT_TYPE, [
+        Term(Opcode.PUSH),
+        Term(Opcode.PUSH),
+        Term(Opcode.LOAD, Address(AddressType.RELATIVE_INDIRECT_SPR, 0)),
+        Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
+        Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 4)),
+        Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5555)),
+        Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
+        Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -5)),
+        Term(Opcode.POP),
+        Term(Opcode.SUBTRACT, Address(AddressType.RELATIVE_SPR, 0)),
+        Term(Opcode.POPN),
+        Term(Opcode.RETURN),
+    ]),
+    "printi": FuncInfo("printi", [Type.INT_TYPE], Type.INT_TYPE),
+    "read": FuncInfo("read", [], Type.STR_TYPE, [
+        Term(Opcode.PUSH),
+        Term(Opcode.PUSH),
+        Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
+        Term(Opcode.PUSH),
+        Term(Opcode.LOAD, Address(AddressType.ABSOLUTE, 6666)),
+        Term(Opcode.COMPARE, Address(AddressType.EXACT, ord("\n"))),
+        Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 8)),
+        Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
+        Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 1)),
+        Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
+        Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
+        Term(Opcode.COMPARE, Address(AddressType.EXACT, 127)),
+        Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 2)),
+        Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -8)),
+        Term(Opcode.LOAD, Address(AddressType.EXACT, ord("\0"))),
+        Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
+        Term(Opcode.POP),
+        Term(Opcode.POP),
+        Term(Opcode.POP),
+        Term(Opcode.RETURN),
+    ])
 }
 
 
+class GlobalContext:
+    def __init__(self):
+        self.function_table = {}
+        self.const_table = {}
+        self.const_pointer = 0
+
+    def require_func(self, func: str):
+        assert func in predefined_funcs, f"Unknown func {func}"
+        self.function_table[func] = predefined_funcs[func]
+
+    def allocate_str_const(self, val: str):
+        assert val[0] != '"', f"Value must be trimmed, got {val}"
+        assert val[-1] != '"', f"Value must be trimmed, got {val}"
+        self.const_table[val] = self.const_pointer
+        self.const_pointer += len(val) + 1
+
+    def allocate_int_const(self, val: int):
+        assert val < (63 << 1), f"Value must be less than {63 << 1}, got {val}"
+        assert val > (- (63 << 1) - 1), f"Value must be greater than {- (63 << 1) - 1}, got {val}"
+        self.const_table[val] = self.const_pointer
+        self.const_pointer += 1
+
+    def get_const_addr(self, val: str | int):
+        assert val in self.const_table, f"unknown const {val}"
+        return self.const_table[val]
+
+
+global_context = GlobalContext()
+
+
 class Statement:
-    def __init__(self, name: str | None = None, ret_type: str = UNK_TYPE, args: list[Statement] | None = None):
-        self.name = name
+    def __init__(self, ret_type: Type = Type.UNK_TYPE):
         self.ret_type = ret_type
+
+
+class InvokeStatement(Statement):
+    def __init__(self, ret_type: Type = Type.UNK_TYPE, name: str | None = None, args: list[Statement] | None = None):
+        super().__init__(ret_type)
+        self.name = name
         self.args = [] if args is None else args
+
+
+class ConstStatement(Statement):
+    def __init__(self, ret_type: Type = Type.UNK_TYPE, val: str | int | None = None):
+        super().__init__(ret_type)
+        self.val = val
+
+
+class ValueStatement(Statement):
+    def __init__(self, val: int | None = None):
+        super().__init__(Type.INT_TYPE)
+        self.val = val
 
 
 def const_statement(node: ASTNode) -> Statement:
     token = node.token
     assert token.tag in (lexer.INT, lexer.STR), f"Unknown const type {token.tag}"
-    const_type: str
+    const_type: Type
     if token.tag == lexer.INT:
-        const_type = INT_TYPE
-    else:
-        const_type = STR_TYPE
-    return Statement(node.token.string, const_type)
+        const_type = Type.INT_TYPE
+        int_val = int(node.token.string)
+        if (31 << 1) > int_val > (- (31 << 1) - 1):
+            return ValueStatement(int_val)
+        global_context.allocate_int_const(int_val)
+        return ConstStatement(const_type, int_val)
+    const_type = Type.STR_TYPE
+    str_val = node.token.string
+    global_context.allocate_str_const(str_val)
+    return ConstStatement(const_type, str_val)
 
 
 def invoke_statement(node: ASTNode) -> Statement:
@@ -65,7 +179,7 @@ def invoke_statement(node: ASTNode) -> Statement:
         assert func.args[i] == statement.ret_type, f"Wrong ret_type of {name} {i} argument, " \
                                                    f"expected: {func.args[i]}, got: {statement.ret_type}"
         children_statements.append(statement)
-    return Statement(name, func.ret, children_statements)
+    return InvokeStatement(func.ret, name, children_statements)
 
 
 def ast_to_statement(node: ASTNode) -> Statement:
@@ -75,32 +189,60 @@ def ast_to_statement(node: ASTNode) -> Statement:
     return invoke_statement(node)
 
 
-def ast_root_to_statements(root: ASTNode) -> list[Statement]:
+def extract_statements(root: ASTNode) -> list[Statement]:
     statements = []
     for node in root.children:
         statements.append(ast_to_statement(node))
     return statements
 
 
-def build_ast(tokens: list[lexer.TokenInfo]) -> ASTNode:
-    root = ASTNode()
-    node = root
-    for token in tokens:
-        if token.string == "(":
-            child = ASTNode(token, node)
-            node.children.append(child)
-            node = child
-        elif token.string == ")":
-            assert node.parent, "Wrong parenthesis count"
-            node = node.parent
-        else:
-            node.children.append(ASTNode(token, node))
-    assert node == root, "Wrong parenthesis count"
-    return root
+def translate_invoke_statement_argument(arg: Statement) -> list[Term]:
+    arg_code = []
+    if isinstance(arg, ValueStatement):
+        arg_code.append(Term(Opcode.LOAD, Address(AddressType.EXACT, arg.val)))
+    elif isinstance(arg, ConstStatement):
+        addr = global_context.get_const_addr(arg.val)
+        arg_code.append(Term(Opcode.LOAD, Address(AddressType.ABSOLUTE, addr)))
+    elif isinstance(arg, InvokeStatement):
+        arg_code.append(*translate_invoke_statement(arg))
+    else:
+        raise NotImplementedError(f"unknown type of InvokeStatement argument, got {arg}")
+    return arg_code
 
 
-def extract_tokens(src) -> list[lexer.TokenInfo]:
-    return lexer.lex(src, lexer.token_expressions)
+def translate_invoke_statement(statement: InvokeStatement) -> list[Term]:
+    global_context.require_func(statement.name)
+    args = statement.args
+    code = []
+    for arg in args[-1:0:-1]:
+        code.extend(translate_invoke_statement_argument(arg))
+        code.append(Term(Opcode.PUSH))
+    code.extend(translate_invoke_statement_argument(args[0]))
+    code.append(Term(Opcode.CALL, statement.name))
+    return code
+
+
+def translate_statement(statement: Statement) -> list[Term]:
+    if isinstance(statement, InvokeStatement):
+        return translate_invoke_statement(statement)
+    raise NotImplementedError(f"unknown type of Statement to translate, got {statement}")
+
+
+class Code:
+    def __init__(self, context: GlobalContext):
+        self.data_memory = []
+        self.data_pointer = 0
+        self.instr_memory = []
+        self.instr_pointer = 0
+        # TODO: impl
+
+
+def translate_into_code(statements: list[Statement]) -> list[Term]:
+    code = []
+    for s in statements:
+        code.extend(translate_statement(s))
+    code.append(Term(Opcode.HALT))
+    return code
 
 
 def translate(src):
@@ -113,11 +255,17 @@ def translate(src):
     logging.debug("Built ast")
 
     logging.debug("Translating ast to statements")
-    statements = ast_root_to_statements(ast)
+    statements = extract_statements(ast)
     logging.debug(f"Translated ast to {len(statements)} statements")
 
-    print(statements)
-    return tokens
+    logging.debug("Translating statements into code")
+    code = translate_into_code(statements)
+    logging.debug(f"Translated to {len(code)} instructions")
+
+    for inst in code:
+        assert not isinstance(inst.arg, str), f"Code contains symbols, got {inst}"
+
+    return code
 
 
 def write_code(dst, code):
