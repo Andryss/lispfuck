@@ -231,11 +231,14 @@ def translate_statement(statement: Statement) -> list[Term]:
 class Code:
     def __init__(self, context: GlobalContext, start_code: list[Term]):
         self.data_memory: list[tuple[int, int, int | str]] = []
-
         self.instr_memory: list[tuple[int, int, str, list[Term]]] = []
         self.instr_pointer = 0
         self.func_table = {}
 
+        self.init_global_context(context)
+        self.init_start_code(start_code)
+
+    def init_global_context(self, context: GlobalContext):
         for symbol, addr in sorted(context.const_table.items(), key=lambda i: i[1]):
             size: int
             if isinstance(symbol, int):
@@ -254,8 +257,10 @@ class Code:
             self.instr_memory.append((self.instr_pointer, len(func_code), func_info.name, func_code))
             self.instr_pointer += len(func_code)
 
+    def init_start_code(self, start_code: list[Term]):
         self.func_table["start"] = self.instr_pointer
         self.instr_memory.append((self.instr_pointer, len(start_code), "start", start_code))
+        self.instr_pointer += len(start_code)
 
         for block in self.instr_memory:
             for instr in block[3]:
