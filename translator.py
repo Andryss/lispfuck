@@ -74,7 +74,7 @@ predefined_funcs: dict[str, FuncInfo] = {
         Term(Opcode.PUSH),
         Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
         Term(Opcode.PUSH),
-        Term(Opcode.LOAD, Address(AddressType.ABSOLUTE, 6666)),
+        Term(Opcode.LOAD, Address(AddressType.ABSOLUTE, 5556)),
         Term(Opcode.COMPARE, Address(AddressType.EXACT, ord("\n"))),
         Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 8)),
         Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
@@ -474,6 +474,6 @@ def main(src: str, dst: str):
 
 if __name__ == "__main__":
     logging.getLogger().setLevel(logging.DEBUG)
-    assert len(sys.argv) == 3, "Wrong arguments: translator.py <input_file> <target_file>"
+    assert len(sys.argv) == 3, "Usage: translator.py <input_file> <target_file>"
     _, source, target = sys.argv
     main(source, target)

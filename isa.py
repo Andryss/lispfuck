@@ -42,6 +42,8 @@ value_ops: list[Opcode] = [
     Opcode.DIVIDE, Opcode.SUBTRACT
 ]
 
+opcode_by_code: dict[int, Opcode] = {op.value[1]: op for op in Opcode}
+
 
 class AddressType(Enum):
     EXACT = ("#", 1)
@@ -55,6 +57,8 @@ offset_addresses: list[AddressType] = [
     AddressType.RELATIVE_IPR, AddressType.RELATIVE_SPR,
     AddressType.RELATIVE_INDIRECT_SPR
 ]
+
+address_by_code: dict[int, AddressType] = {adr.value[1]: adr for adr in AddressType}
 
 
 class Address:
