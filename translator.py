@@ -13,8 +13,9 @@ def extract_tokens(src) -> list[lexer.TokenInfo]:
 
 
 class ASTNode:
-    def __init__(self, token: lexer.TokenInfo | None = None, parent: ASTNode | None = None,
-                 children: list[ASTNode] | None = None):
+    def __init__(
+        self, token: lexer.TokenInfo | None = None, parent: ASTNode | None = None, children: list[ASTNode] | None = None
+    ):
         self.token = token
         self.parent = parent
         self.children = [] if children is None else children
@@ -54,43 +55,53 @@ class FuncInfo:
 
 
 predefined_funcs: dict[str, FuncInfo] = {
-    "prints": FuncInfo("prints", [Type.STR_TYPE], Type.INT_TYPE, [
-        Term(Opcode.PUSH),
-        Term(Opcode.PUSH),
-        Term(Opcode.LOAD, Address(AddressType.RELATIVE_INDIRECT_SPR, 0)),
-        Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-        Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 4)),
-        Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5555)),
-        Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
-        Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -5)),
-        Term(Opcode.POP),
-        Term(Opcode.SUBTRACT, Address(AddressType.RELATIVE_SPR, 0)),
-        Term(Opcode.POPN),
-        Term(Opcode.RETURN),
-    ]),
+    "prints": FuncInfo(
+        "prints",
+        [Type.STR_TYPE],
+        Type.INT_TYPE,
+        [
+            Term(Opcode.PUSH),
+            Term(Opcode.PUSH),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_INDIRECT_SPR, 0)),
+            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
+            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 4)),
+            Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5555)),
+            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -5)),
+            Term(Opcode.POP),
+            Term(Opcode.SUBTRACT, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.POPN),
+            Term(Opcode.RETURN),
+        ],
+    ),
     "printi": FuncInfo("printi", [Type.INT_TYPE], Type.INT_TYPE),
-    "read": FuncInfo("read", [], Type.STR_TYPE, [
-        Term(Opcode.PUSH),
-        Term(Opcode.PUSH),
-        Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
-        Term(Opcode.PUSH),
-        Term(Opcode.LOAD, Address(AddressType.ABSOLUTE, 5556)),
-        Term(Opcode.COMPARE, Address(AddressType.EXACT, ord("\n"))),
-        Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 8)),
-        Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
-        Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 1)),
-        Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
-        Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
-        Term(Opcode.COMPARE, Address(AddressType.EXACT, 127)),
-        Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 2)),
-        Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -8)),
-        Term(Opcode.LOAD, Address(AddressType.EXACT, ord("\0"))),
-        Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
-        Term(Opcode.POP),
-        Term(Opcode.POP),
-        Term(Opcode.POP),
-        Term(Opcode.RETURN),
-    ])
+    "read": FuncInfo(
+        "read",
+        [],
+        Type.STR_TYPE,
+        [
+            Term(Opcode.PUSH),
+            Term(Opcode.PUSH),
+            Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
+            Term(Opcode.PUSH),
+            Term(Opcode.LOAD, Address(AddressType.ABSOLUTE, 5556)),
+            Term(Opcode.COMPARE, Address(AddressType.EXACT, ord("\n"))),
+            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 8)),
+            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
+            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 1)),
+            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.COMPARE, Address(AddressType.EXACT, 127)),
+            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 2)),
+            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -8)),
+            Term(Opcode.LOAD, Address(AddressType.EXACT, ord("\0"))),
+            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
+            Term(Opcode.POP),
+            Term(Opcode.POP),
+            Term(Opcode.POP),
+            Term(Opcode.RETURN),
+        ],
+    ),
 }
 
 
@@ -107,7 +118,7 @@ class GlobalContext:
 
     def require_int_const(self, const: int):
         assert const < (1 << 63), f"Value must be less than {1 << 63}, got {const}"
-        assert const > (- (1 << 63) - 1), f"Value must be greater than {- (1 << 63) - 1}, got {const}"
+        assert const > (-(1 << 63) - 1), f"Value must be greater than {- (1 << 63) - 1}, got {const}"
         self.const_table.add(const)
 
     def require_str_const(self, const: str):
@@ -147,7 +158,7 @@ class ConstStatement(Statement):
 class ValueStatement(Statement):
     def __init__(self, val: int | None = None):
         assert val < (1 << 19), f"Value must be less than {1 << 19}, got {val}"
-        assert val > (- (1 << 19) - 1), f"Value must be greater than {- (1 << 19) - 1}, got {val}"
+        assert val > (-(1 << 19) - 1), f"Value must be greater than {- (1 << 19) - 1}, got {val}"
         super().__init__(Type.INT_TYPE)
         self.val = val
 
@@ -159,7 +170,7 @@ def const_statement(node: ASTNode) -> Statement:
     if token.tag == lexer.INT:
         const_type = Type.INT_TYPE
         int_val = int(node.token.string)
-        if (19 << 1) > int_val > (- (19 << 1) - 1):
+        if (19 << 1) > int_val > (-(19 << 1) - 1):
             return ValueStatement(int_val)
         global_context.require_int_const(int_val)
     elif token.tag == lexer.STR:
@@ -182,8 +193,9 @@ def invoke_statement(node: ASTNode) -> Statement:
     children_statements = []
     for i in range(len(children_nodes)):
         statement = ast_to_statement(children_nodes[i])
-        assert func.args[i] == statement.ret_type, f"Wrong ret_type of {name} {i} argument, " \
-                                                   f"expected: {func.args[i]}, got: {statement.ret_type}"
+        assert func.args[i] == statement.ret_type, (
+            f"Wrong ret_type of {name} {i} argument, " f"expected: {func.args[i]}, got: {statement.ret_type}"
+        )
         children_statements.append(statement)
     return InvokeStatement(func.ret, name, children_statements)
 
@@ -217,10 +229,7 @@ def translate_invoke_statement_argument(arg: Statement) -> list[Term]:
 
 def translate_read_statement(read: InvokeStatement) -> list[Term]:
     var = global_context.require_anon_variable(128)
-    return [
-        Term(Opcode.LOAD, var),
-        Term(Opcode.CALL, read.name)
-    ]
+    return [Term(Opcode.LOAD, var), Term(Opcode.CALL, read.name)]
 
 
 def translate_invoke_statement(statement: InvokeStatement) -> list[Term]:
@@ -342,7 +351,7 @@ def int_to_bytes(i: int, size: int) -> bytearray:
     assert i < (1 << (8 * size)), f"value would lose precision, got {i} with size {size}"
     binary = []
     while size > 0:
-        binary.append(i & 0xff)
+        binary.append(i & 0xFF)
         i >>= 8
         size -= 1
     binary = binary[::-1]
@@ -350,12 +359,12 @@ def int_to_bytes(i: int, size: int) -> bytearray:
 
 
 def term_to_binary(term: Term) -> bytearray:
-    binary = (term.op.value[1] << 24)
+    binary = term.op.value[1] << 24
     if term.arg:
         assert isinstance(term.arg, Address), f"found unresolved symbol in term, got {term}"
-        binary += (term.arg.kind.value[1] << 20)
+        binary += term.arg.kind.value[1] << 20
         val_unsigned = term.arg.val if term.arg.val >= 0 else (1 << 20) + term.arg.val
-        binary += (val_unsigned << 0)
+        binary += val_unsigned << 0
     return int_to_bytes(binary, 4)
 
 

@@ -34,15 +34,15 @@ def read_data(f: BinaryIO) -> list[int]:
 def parse_instruction(instr: int) -> Term:
     assert instr < (1 << 32), f"instruction mus be less than {1 << 32}, got {instr}"
     assert instr >= 0, f"instruction must be non-negative, got {instr}"
-    opcode_val = (instr >> 24) & 0xff
+    opcode_val = (instr >> 24) & 0xFF
     assert opcode_val in isa.opcode_by_code, f"unexpected opcode, got {opcode_val}"
     op = isa.opcode_by_code[opcode_val]
     if op in isa.no_arg_ops:
         return Term(op)
-    adr_type_val = (instr >> 20) & 0xf
+    adr_type_val = (instr >> 20) & 0xF
     assert adr_type_val in isa.address_by_code, f"unexpected address type, got {adr_type_val}"
     adr_type = isa.address_by_code[adr_type_val]
-    adr_val = (instr >> 0) & 0xfffff
+    adr_val = (instr >> 0) & 0xFFFFF
     return Term(op, Address(adr_type, adr_val))
 
 
@@ -94,7 +94,7 @@ class DataPath:
 
     def signal_write_data_memory(self):
         if self.adr == 5556:
-            assert 0 <= self.dar <= 0x10ffff, f"dar contains unknown symbol, got {self.dar}"
+            assert 0 <= self.dar <= 0x10FFFF, f"dar contains unknown symbol, got {self.dar}"
             self.output_tokens.append(chr(self.dar))
         else:
             self.data_memory[self.adr] = self.dar

@@ -28,19 +28,11 @@ class Opcode(Enum):
     SUBTRACT = ("sub", 16)
 
 
-no_arg_ops: list[Opcode] = [
-    Opcode.HALT, Opcode.RETURN, Opcode.PUSH, Opcode.POP, Opcode.POPN
-]
+no_arg_ops: list[Opcode] = [Opcode.HALT, Opcode.RETURN, Opcode.PUSH, Opcode.POP, Opcode.POPN]
 
-addr_ops: list[Opcode] = [
-    Opcode.STORE, Opcode.CALL, Opcode.BRANCH_ZERO, Opcode.BRANCH_ANY,
-    Opcode.INCREMENT
-]
+addr_ops: list[Opcode] = [Opcode.STORE, Opcode.CALL, Opcode.BRANCH_ZERO, Opcode.BRANCH_ANY, Opcode.INCREMENT]
 
-value_ops: list[Opcode] = [
-    Opcode.LOAD, Opcode.COMPARE, Opcode.MODULO, Opcode.MULTIPLY,
-    Opcode.DIVIDE, Opcode.SUBTRACT
-]
+value_ops: list[Opcode] = [Opcode.LOAD, Opcode.COMPARE, Opcode.MODULO, Opcode.MULTIPLY, Opcode.DIVIDE, Opcode.SUBTRACT]
 
 opcode_by_code: dict[int, Opcode] = {op.value[1]: op for op in Opcode}
 
@@ -54,8 +46,9 @@ class AddressType(Enum):
 
 
 offset_addresses: list[AddressType] = [
-    AddressType.RELATIVE_IPR, AddressType.RELATIVE_SPR,
-    AddressType.RELATIVE_INDIRECT_SPR
+    AddressType.RELATIVE_IPR,
+    AddressType.RELATIVE_SPR,
+    AddressType.RELATIVE_INDIRECT_SPR,
 ]
 
 address_by_code: dict[int, AddressType] = {adr.value[1]: adr for adr in AddressType}
