@@ -34,6 +34,8 @@ addr_ops: list[Opcode] = [Opcode.STORE, Opcode.CALL, Opcode.BRANCH_ZERO, Opcode.
 
 value_ops: list[Opcode] = [Opcode.LOAD, Opcode.COMPARE, Opcode.MODULO, Opcode.MULTIPLY, Opcode.DIVIDE, Opcode.SUBTRACT]
 
+branch_ops: list[Opcode] = [Opcode.BRANCH_ZERO, Opcode.BRANCH_ANY]
+
 opcode_by_code: dict[int, Opcode] = {op.value[1]: op for op in Opcode}
 
 
@@ -70,7 +72,7 @@ class Address:
 
 
 class Term:
-    def __init__(self, op: Opcode, arg: str | Address | None = None):
+    def __init__(self, op: Opcode, arg: str | int | Address | None = None):
         self.op = op
         self.arg = arg
 

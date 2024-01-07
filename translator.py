@@ -65,7 +65,7 @@ predefined_funcs: dict[str, FuncInfo] = {
             Term(Opcode.LOAD, Address(AddressType.RELATIVE_INDIRECT_SPR, 0)),
             Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
             Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 4)),
-            Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5555)),
+            Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
             Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
             Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -5)),
             Term(Opcode.POP),
@@ -84,7 +84,7 @@ predefined_funcs: dict[str, FuncInfo] = {
             Term(Opcode.PUSH),
             Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
             Term(Opcode.PUSH),
-            Term(Opcode.LOAD, Address(AddressType.ABSOLUTE, 5556)),
+            Term(Opcode.LOAD, Address(AddressType.ABSOLUTE, 5555)),
             Term(Opcode.COMPARE, Address(AddressType.EXACT, ord("\n"))),
             Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 8)),
             Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
@@ -150,7 +150,7 @@ class InvokeStatement(Statement):
 
 
 class ConstStatement(Statement):
-    def __init__(self, ret_type: Type = Type.UNK_TYPE, val: str | None = None):
+    def __init__(self, ret_type: Type = Type.UNK_TYPE, val: str | int | None = None):
         super().__init__(ret_type)
         self.val = val
 
@@ -166,20 +166,19 @@ class ValueStatement(Statement):
 def const_statement(node: ASTNode) -> Statement:
     token = node.token
     assert token.tag in (lexer.INT, lexer.STR), f"Unknown const type {token.tag}"
-    const_type: Type
     if token.tag == lexer.INT:
         const_type = Type.INT_TYPE
         int_val = int(node.token.string)
         if (19 << 1) > int_val > (-(19 << 1) - 1):
             return ValueStatement(int_val)
         global_context.require_int_const(int_val)
-    elif token.tag == lexer.STR:
+        return ConstStatement(const_type, int_val)
+    if token.tag == lexer.STR:
         const_type = Type.STR_TYPE
         str_val = node.token.string
         global_context.require_str_const(str_val)
-    else:
-        raise NotImplementedError(f"unknown lex tag of ConstStatement, got {token.tag}")
-    return ConstStatement(const_type, node.token.string)
+        return ConstStatement(const_type, str_val)
+    raise NotImplementedError(f"unknown lex tag of ConstStatement, got {token.tag}")
 
 
 def invoke_statement(node: ASTNode) -> Statement:
@@ -262,7 +261,7 @@ class Code:
         self.instr_pointer = 0
 
         self.symbols: set[str] = set()
-        self.const_table: dict[str, int] = {}
+        self.const_table: dict[str | int, int] = {}
         self.func_table: dict[str, int] = {}
 
         self.init_global_context(context)
@@ -278,10 +277,9 @@ class Code:
                 data = [*symbol, "\0"]
             else:
                 raise NotImplementedError(f"unknown symbol type, got {symbol}")
-            symbol = str(symbol)
             self.const_table[symbol] = self.data_pointer
-            self.symbols.add(symbol)
-            self.data_memory.append((self.data_pointer, len(data), symbol, data))
+            self.symbols.add(str(symbol))
+            self.data_memory.append((self.data_pointer, len(data), str(symbol), data))
             self.data_pointer += len(data)
 
         for symbol in context.anon_var_table:
@@ -310,9 +308,12 @@ class Code:
                 if isinstance(instr.arg, str):
                     assert instr.arg in self.symbols, f"unknown symbol, got {instr.arg}"
                     if instr.arg in self.const_table:
-                        instr.arg = Address(AddressType.ABSOLUTE, self.const_table[instr.arg])
+                        instr.arg = Address(AddressType.EXACT, self.const_table[instr.arg])
                     else:
                         instr.arg = Address(AddressType.ABSOLUTE, self.func_table[instr.arg])
+                elif isinstance(instr.arg, int):
+                    assert str(instr.arg) in self.symbols, f"unknown symbol, got {instr.arg}"
+                    instr.arg = Address(AddressType.ABSOLUTE, self.const_table[instr.arg])
 
     def __len__(self):
         return sum(map(lambda blk: blk[1], self.instr_memory))
