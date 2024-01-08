@@ -19,22 +19,42 @@ class Opcode(Enum):
 
     COMPARE = ("cmp", 9)
     BRANCH_ZERO = ("brz", 10)
-    BRANCH_ANY = ("br", 11)
+    BRANCH_GREATER_EQUALS = ("brge", 11)
+    BRANCH_ANY = ("br", 12)
 
-    INCREMENT = ("inc", 12)
-    MODULO = ("mod", 13)
-    MULTIPLY = ("mul", 14)
-    DIVIDE = ("div", 15)
-    SUBTRACT = ("sub", 16)
+    INCREMENT = ("inc", 13)
+    DECREMENT = ("dec", 14)
+
+    MODULO = ("mod", 15)
+    ADD = ("add", 16)
+    SUBTRACT = ("sub", 17)
+    MULTIPLY = ("mul", 18)
+    DIVIDE = ("div", 19)
+    INVERSE = ("inv", 20)
 
 
-no_arg_ops: list[Opcode] = [Opcode.HALT, Opcode.RETURN, Opcode.PUSH, Opcode.POP, Opcode.POPN]
+no_arg_ops: list[Opcode] = [Opcode.HALT, Opcode.RETURN, Opcode.PUSH, Opcode.POP, Opcode.POPN, Opcode.INVERSE]
 
-addr_ops: list[Opcode] = [Opcode.STORE, Opcode.CALL, Opcode.BRANCH_ZERO, Opcode.BRANCH_ANY, Opcode.INCREMENT]
+addr_ops: list[Opcode] = [
+    Opcode.STORE,
+    Opcode.CALL,
+    Opcode.BRANCH_ZERO,
+    Opcode.BRANCH_ANY,
+    Opcode.INCREMENT,
+    Opcode.DECREMENT,
+]
 
-value_ops: list[Opcode] = [Opcode.LOAD, Opcode.COMPARE, Opcode.MODULO, Opcode.MULTIPLY, Opcode.DIVIDE, Opcode.SUBTRACT]
+value_ops: list[Opcode] = [
+    Opcode.LOAD,
+    Opcode.COMPARE,
+    Opcode.MODULO,
+    Opcode.ADD,
+    Opcode.SUBTRACT,
+    Opcode.MULTIPLY,
+    Opcode.DIVIDE,
+]
 
-branch_ops: list[Opcode] = [Opcode.BRANCH_ZERO, Opcode.BRANCH_ANY]
+branch_ops: list[Opcode] = [Opcode.BRANCH_ZERO, Opcode.BRANCH_GREATER_EQUALS, Opcode.BRANCH_ANY]
 
 opcode_by_code: dict[int, Opcode] = {op.value[1]: op for op in Opcode}
 

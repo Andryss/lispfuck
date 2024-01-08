@@ -74,7 +74,45 @@ predefined_funcs: dict[str, FuncInfo] = {
             Term(Opcode.RETURN),
         ],
     ),
-    "printi": FuncInfo("printi", [Type.INT_TYPE], Type.INT_TYPE),
+    "printi": FuncInfo(
+        "printi",
+        [Type.INT_TYPE],
+        Type.INT_TYPE,
+        [
+            Term(Opcode.PUSH),
+            Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
+            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 2)),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
+            Term(Opcode.BRANCH_GREATER_EQUALS, Address(AddressType.RELATIVE_IPR, 5)),
+            Term(Opcode.LOAD, Address(AddressType.EXACT, ord("-"))),
+            Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.INVERSE),
+            Term(Opcode.PUSH),
+            Term(Opcode.MODULO, Address(AddressType.EXACT, 10)),
+            Term(Opcode.ADD, Address(AddressType.EXACT, ord("0"))),
+            Term(Opcode.DECREMENT, Address(AddressType.RELATIVE_SPR, 3)),
+            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 3)),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.DIVIDE, Address(AddressType.EXACT, 10)),
+            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
+            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 3)),
+            Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
+            Term(Opcode.POP),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 2)),
+            Term(Opcode.CALL, "prints"),
+            Term(Opcode.PUSH),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 1)),
+            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
+            Term(Opcode.BRANCH_GREATER_EQUALS, Address(AddressType.RELATIVE_IPR, 2)),
+            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.POP),
+            Term(Opcode.POPN),
+            Term(Opcode.RETURN),
+        ],
+    ),
     "read": FuncInfo(
         "read",
         [],
@@ -93,7 +131,7 @@ predefined_funcs: dict[str, FuncInfo] = {
             Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
             Term(Opcode.COMPARE, Address(AddressType.EXACT, 127)),
             Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 2)),
-            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -8)),
+            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
             Term(Opcode.LOAD, Address(AddressType.EXACT, ord("\0"))),
             Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
             Term(Opcode.POP),
@@ -109,7 +147,8 @@ class GlobalContext:
     def __init__(self):
         self.function_table: dict[str, FuncInfo] = {}
         self.const_table: set[str | int] = set()
-        self.anon_var_table: dict[str, int] = {}
+        self.anon_var_table: dict[str, tuple[int, int]] = {}
+        self.anon_var_pointer = 0
         self.anon_var_counter = 0
 
     def require_func(self, func: str):
@@ -126,12 +165,16 @@ class GlobalContext:
         assert const[-1] != '"', f"Value must be trimmed, got {const}"
         self.const_table.add(const)
 
-    def require_anon_variable(self, size: int) -> str:
+    def require_anon_variable(self, size: int, offset: int = 0) -> str:
         assert size > 0, f"negative size buffer?, got {size}"
         name = f"anon${self.anon_var_counter}"
         self.anon_var_counter += 1
-        self.anon_var_table[name] = size
+        self.anon_var_table[name] = (self.anon_var_pointer + offset, size)
+        self.anon_var_pointer += size
         return name
+
+    def clear_anon_variables(self):
+        self.anon_var_pointer = 0
 
 
 global_context = GlobalContext()
@@ -163,13 +206,19 @@ class ValueStatement(Statement):
         self.val = val
 
 
+class ReferenceStatement(Statement):
+    def __init__(self, ret_type: Type = Type.UNK_TYPE, symbol: str | None = None):
+        super().__init__(ret_type)
+        self.symbol = symbol
+
+
 def const_statement(node: ASTNode) -> Statement:
     token = node.token
     assert token.tag in (lexer.INT, lexer.STR), f"Unknown const type {token.tag}"
     if token.tag == lexer.INT:
         const_type = Type.INT_TYPE
         int_val = int(node.token.string)
-        if (19 << 1) > int_val > (-(19 << 1) - 1):
+        if (1 << 19) > int_val > (-(1 << 19) - 1):
             return ValueStatement(int_val)
         global_context.require_int_const(int_val)
         return ConstStatement(const_type, int_val)
@@ -199,11 +248,42 @@ def invoke_statement(node: ASTNode) -> Statement:
     return InvokeStatement(func.ret, name, children_statements)
 
 
+def special_statement(node: ASTNode) -> Statement:
+    children = node.children
+    name = children[0].token.string
+    if name == "set":
+        assert len(children) == 3, "Set statement must contains of variable name and value to set"
+        key, val = children[1], children[2]
+        assert key.token.tag == lexer.ID, f"variable name must be ID, got {key.token}"
+        if len(val.children) > 0:
+            value_name = val.token.string
+            assert value_name == "read", f"allow only read or const with set, got {value_name}"
+        else:
+            assert val.token.tag in (lexer.INT, lexer.STR), f"allow only read or const with set, got {val.token.tag}"
+        args = [ReferenceStatement(symbol=key.token.string), ast_to_statement(val)]
+        return InvokeStatement(args[1].ret_type, name, args)
+    raise NotImplementedError(f"unknown special statement, got {name}")
+
+
+def reference_statement(node: ASTNode) -> Statement:
+    raise NotImplementedError()
+
+
 def ast_to_statement(node: ASTNode) -> Statement:
     children = node.children
-    if len(children) == 0:
+    if len(children) > 0:
+        tag = children[0].token.tag
+        if tag == lexer.FUNC:
+            return invoke_statement(node)
+        if tag == lexer.SPECIAL:
+            return special_statement(node)
+        raise NotImplementedError(f"ast to statement translation, got {tag}")
+    tag = node.token.tag
+    if tag in (lexer.STR, lexer.INT):
         return const_statement(node)
-    return invoke_statement(node)
+    if tag == lexer.ID:
+        return reference_statement(node)
+    raise NotImplementedError(f"ast to statement translation, got {tag}")
 
 
 def extract_statements(root: ASTNode) -> list[Statement]:
@@ -227,14 +307,31 @@ def translate_invoke_statement_argument(arg: Statement) -> list[Term]:
 
 
 def translate_read_statement(read: InvokeStatement) -> list[Term]:
-    var = global_context.require_anon_variable(128)
-    return [Term(Opcode.LOAD, var), Term(Opcode.CALL, read.name)]
+    read.anon_var_name = global_context.require_anon_variable(128)
+    return [Term(Opcode.LOAD, read.anon_var_name), Term(Opcode.CALL, read.name)]
+
+
+def translate_printi_statement(printi: InvokeStatement) -> list[Term]:
+    global_context.require_func("prints")
+    printi.anon_var_name = global_context.require_anon_variable(21, offset=20)
+    code = [Term(Opcode.LOAD, printi.anon_var_name), Term(Opcode.PUSH)]
+    code.extend(translate_invoke_statement_argument(printi.args[0]))
+    code.extend([Term(Opcode.CALL, printi.name), Term(Opcode.POPN)])
+    return code
+
+
+def translate_set_statement(set_st: InvokeStatement) -> list[Term]:
+    raise NotImplementedError()
 
 
 def translate_invoke_statement(statement: InvokeStatement) -> list[Term]:
+    if statement.name == "set":
+        return translate_set_statement(statement)
     global_context.require_func(statement.name)
     if statement.name == "read":
         return translate_read_statement(statement)
+    if statement.name == "printi":
+        return translate_printi_statement(statement)
     args = statement.args
     code = []
     for arg in args[-1:0:-1]:
@@ -243,6 +340,8 @@ def translate_invoke_statement(statement: InvokeStatement) -> list[Term]:
     if len(args) > 0:
         code.extend(translate_invoke_statement_argument(args[0]))
     code.append(Term(Opcode.CALL, statement.name))
+    for _ in range(len(args) - 1):
+        code.append(Term(Opcode.POPN))
     return code
 
 
@@ -283,7 +382,8 @@ class Code:
             self.data_pointer += len(data)
 
         for symbol in context.anon_var_table:
-            self.const_table[symbol] = self.data_pointer
+            offset, _ = context.anon_var_table[symbol]
+            self.const_table[symbol] = self.data_pointer + offset
             self.symbols.add(symbol)
 
         self.instr_memory.append((0, 1, "#", [Term(Opcode.BRANCH_ANY, "start")]))
@@ -323,6 +423,7 @@ def translate_into_code(statements: list[Statement]) -> Code:
     start_code = []
     for s in statements:
         start_code.extend(translate_statement(s))
+        global_context.clear_anon_variables()
     start_code.append(Term(Opcode.HALT))
     return Code(global_context, start_code)
 
@@ -376,12 +477,15 @@ def terms_to_binary(terms: list[Term]) -> bytearray:
     return binary
 
 
+mask_64 = (1 << 64) - 1
+
+
 def write_data_memory(code: Code) -> bytearray:
     binary = bytearray()
     for block in code.data_memory:
         for word in block[3]:
             if isinstance(word, int):
-                binary.extend(int_to_bytes(word, 8))
+                binary.extend(int_to_bytes(word if word >= 0 else word & mask_64, 8))
             elif isinstance(word, str):
                 assert len(word) == 1, f"unexpected char size, got {word}"
                 binary.extend(int_to_bytes(ord(word), 8))
@@ -424,7 +528,8 @@ def code_to_binary(code: Code) -> bytearray:
 def text_data_memory(code: Code) -> list[str]:
     lines = ["<address> - <length> - <data>\n"]
     for block in code.data_memory:
-        lines.append(f"{block[0]}\t- {block[1]}\t- {block[2]}\n")
+        addr = "0x{:03x}".format(block[0])
+        lines.append(f"{addr} - {block[1]}\t- {block[2]}\n")
     return lines
 
 
@@ -434,7 +539,8 @@ def text_instr_memory(code: Code) -> list[str]:
         lines.append(f"{block[2]}:\n")
         base_addr = block[0]
         for i, term in enumerate(block[3]):
-            lines.append(f"{base_addr + i}\t- 0x{term_to_binary(term).hex()} - {term}\n")
+            addr = "0x{:03x}".format(base_addr + i)
+            lines.append(f"{addr} - 0x{term_to_binary(term).hex()} - {term}\n")
     return lines
 
 

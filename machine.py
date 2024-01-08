@@ -79,6 +79,8 @@ class Reg(Enum):
 class AluOp(Enum):
     SUM = "sum"
     MUL = "mul"
+    MOD = "mod"
+    DIV = "div"
 
 
 extend_20 = 0x01
@@ -98,11 +100,34 @@ def extend_bits(val: int, count: int) -> int:
 
 mask_64 = (1 << 64) - 1
 
+n_flag = 0x8
+z_flag = 0x4
+v_flag = 0x2
+c_flag = 0x1
+
+
+def alu_sum(left: int, right: int, carry: int = 0) -> (int, int):
+    result = 0
+    for i in range(64):
+        bit_res = ((left >> i) & 0x1) + ((right >> i) & 0x1) + ((carry >> i) & 0x1)
+        result |= (bit_res & 0x1) << i
+        carry |= (bit_res & 0x2) << i
+    flags = 0
+    if (result >> 63) & 0x1 == 1:
+        flags |= n_flag
+    if result & mask_64 == 0:
+        flags |= z_flag
+    if ((carry >> 63) & 0x1) != ((carry >> 64) & 0x1):
+        flags |= v_flag
+    if (carry >> 64) & 0x1 == 1:
+        flags |= c_flag
+    return result & mask_64, flags
+
 
 class DataPath:
     def __init__(self, data_memory_size: int, data_memory: list[int], input_tokens: list[str]):
         assert data_memory_size >= len(data_memory), "data_memory_size must be greater than data_memory size"
-        assert all(0 <= word < (64 << 1) for word in data_memory), "all words in data memory must be uint64"
+        assert all(0 <= word < (1 << 64) for word in data_memory), "all words in data memory must be uint64"
         self.data_memory_size = data_memory_size
         self.data_memory = data_memory.copy()
         self.data_memory.extend([0] * (data_memory_size - len(data_memory)))
@@ -135,8 +160,17 @@ class DataPath:
     def get_ipr(self):
         return self.ipr
 
+    def negative(self) -> bool:
+        return self.flr & n_flag != 0
+
     def zero(self) -> bool:
-        return self.flr & 0x4 != 0
+        return self.flr & z_flag != 0
+
+    def overflow(self) -> bool:
+        return self.flr & v_flag != 0
+
+    def carry(self) -> bool:
+        return self.flr & c_flag != 0
 
     def left_alu_val(self, left: Reg | None) -> int:
         if left is None:
@@ -158,16 +192,21 @@ class DataPath:
         left = extend_bits(left, 20) if opts & extend_20 != 0 else left
 
         if op == AluOp.SUM:
-            output = left + right
-            output = output + 1 if opts & plus_1 != 0 else output
+            output, flags = alu_sum(left & mask_64, right & mask_64, 1 if opts & plus_1 != 0 else 0)
+            if opts & set_flags != 0:
+                self.flr = flags
         elif op == AluOp.MUL:
             output = left * right
-
-        if opts & set_flags != 0:
-            if output & mask_64 == 0:
-                self.flr |= 0x4
-            else:
-                self.flr &= ~0x4
+        elif op == AluOp.MOD:
+            assert left >= 0, f"mod can performed only with non-negatives, got left={left}"
+            assert right >= 0, f"mod can performed only with non-negatives, got right={right}"
+            output = left % right
+        elif op == AluOp.DIV:
+            assert left >= 0, f"div can performed only with non-negatives, got left={left}"
+            assert right >= 0, f"div can performed only with non-negatives, got right={right}"
+            output = left // right
+        else:
+            raise NotImplementedError(op)
 
         output = ~output if opts & inv_out != 0 else output
 
@@ -188,10 +227,19 @@ class DataPath:
     ):
         if set_regs is None:
             set_regs = []
-        left_val = self.left_alu_val(left)
-        right_val = self.right_alu_val(right)
+        left_val = extend_bits(self.left_alu_val(left), 64)
+        right_val = extend_bits(self.right_alu_val(right), 64)
         output = self.alu(left_val, right_val, alu_op, opts)
         self.set_regs(output, set_regs)
+
+    def __repr__(self):
+        regs_repr = (
+            f"acr={hex(self.acr)} ipr={hex(self.ipr)} inr={hex(self.inr)} "
+            f"bur={hex(self.bur)} adr={hex(self.adr)} dar={hex(self.dar)} spr={hex(self.spr)} "
+            f"flr={hex(self.flr)}"
+        )
+        tokens_reps = f"input={self.input_tokens} output={self.output_tokens}"
+        return f"{regs_repr} {tokens_reps}"
 
 
 class ControlUnit:
@@ -222,6 +270,14 @@ class ControlUnit:
             else:
                 self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.IPR], opts=plus_1)
             return
+        if instr.op == Opcode.BRANCH_GREATER_EQUALS:
+            assert instr.arg.kind == AddressType.RELATIVE_IPR, f"unsupported addressing for brge, got {instr}"
+            if self.data_path.negative() == self.data_path.overflow():
+                self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.BUR])
+                self.data_path.signal_alu(left=Reg.INR, right=Reg.BUR, set_regs=[Reg.IPR], opts=extend_20)
+            else:
+                self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.IPR], opts=plus_1)
+            return
         # BRANCH_ANY
         assert instr.arg.kind in (
             AddressType.ABSOLUTE,
@@ -240,7 +296,7 @@ class ControlUnit:
         if opcode in (Opcode.CALL, Opcode.RETURN):
             self.execute_call_control_instruction(instr)
             return True
-        if opcode in (Opcode.BRANCH_ZERO, Opcode.BRANCH_ANY):
+        if opcode in (Opcode.BRANCH_ZERO, Opcode.BRANCH_GREATER_EQUALS, Opcode.BRANCH_ANY):
             self.execute_branch_control_instruction(instr)
             return True
         return False
@@ -292,15 +348,31 @@ class ControlUnit:
         # POPN
         self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.SPR], opts=plus_1)
 
+    def execute_inc_dec(self, instr: Term):
+        if instr.op == Opcode.INCREMENT:
+            self.data_path.signal_read_data_memory()
+            self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.DAR], opts=plus_1)
+            self.data_path.signal_write_data_memory()
+            return
+        # DECREMENT
+        self.data_path.signal_read_data_memory()
+        self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.DAR], opts=inv_left)
+        self.data_path.signal_write_data_memory()
+
     def execute_math(self, instr: Term):
         if instr.op == Opcode.MODULO:
+            self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, alu_op=AluOp.MOD, set_regs=[Reg.ACR])
+            return
+        if instr.op == Opcode.ADD:
+            self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, set_regs=[Reg.ACR])
+            return
+        if instr.op == Opcode.SUBTRACT:
+            self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, set_regs=[Reg.ACR], opts=inv_right | plus_1)
             return
         if instr.op == Opcode.MULTIPLY:
-            return
-        if instr.op == Opcode.DIVIDE:
-            return
-        # SUBTRACT
-        self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, set_regs=[Reg.ACR], opts=inv_right | plus_1)
+            self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, alu_op=AluOp.MUL, set_regs=[Reg.ACR])
+        # DIVIDE
+        self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, alu_op=AluOp.DIV, set_regs=[Reg.ACR])
 
     def execute(self, instr: Term):
         opcode = instr.op
@@ -312,12 +384,12 @@ class ControlUnit:
             self.execute_push_pop(instr)
         elif opcode == Opcode.COMPARE:
             self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, opts=inv_right | plus_1 | set_flags)
-        elif opcode == Opcode.INCREMENT:
-            self.data_path.signal_read_data_memory()
-            self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.DAR], opts=plus_1)
-            self.data_path.signal_write_data_memory()
-        elif opcode in (Opcode.MODULO, Opcode.MULTIPLY, Opcode.DIVIDE, Opcode.SUBTRACT):
+        elif opcode in (Opcode.INCREMENT, Opcode.DECREMENT):
+            self.execute_inc_dec(instr)
+        elif opcode in (Opcode.MODULO, Opcode.ADD, Opcode.SUBTRACT, Opcode.MULTIPLY, Opcode.DIVIDE):
             self.execute_math(instr)
+        elif opcode == Opcode.INVERSE:
+            self.data_path.signal_alu(left=Reg.ACR, set_regs=[Reg.ACR], opts=inv_left | plus_1)
         else:
             raise NotImplementedError(f"unsupported opcode for instruction executing, got {instr}")
 
@@ -327,26 +399,25 @@ class ControlUnit:
     def execute_ordinary_instruction(self, instr: Term):
         if instr.op in isa.addr_ops or instr.op in isa.value_ops:
             self.address_decode(instr)
-
         if instr.op in isa.value_ops:
             self.value_fetch(instr)
-
         self.execute(instr)
-
         self.finalize()
 
     def execute_next_instruction(self):
         instruction = self.program[self.data_path.get_ipr()]
-
+        logging.debug(instruction)
         self.data_path.signal_set_inr(instruction)
+        if not self.execute_control_instruction(instruction):
+            self.execute_ordinary_instruction(instruction)
+        logging.debug(self)
 
-        if self.execute_control_instruction(instruction):
-            return
+    def __repr__(self):
+        dp_repr = f"{self.data_path}"
+        return f"{dp_repr}"
 
-        self.execute_ordinary_instruction(instruction)
 
-
-def simulation(code: Code, input_tokens: list[str], data_memory_size: int = 10_000, limit: int = 1_000):
+def simulation(code: Code, input_tokens: list[str], data_memory_size: int = 0x1FFF, limit: int = 1_000):
     data_path = DataPath(data_memory_size, code.data, input_tokens)
     control_unit = ControlUnit(code.instructions, data_path)
     instruction_proceed = 0

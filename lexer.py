@@ -8,31 +8,18 @@ FUNC = "FUNC"
 INT = "INT"
 STR = "STR"
 ID = "ID"
+SPECIAL = "SPECIAL"
 
 token_expressions = [
     (r"[ \n\t]+", None),
     (r"#[^\n]*", None),
     (r"\(", RESERVED),
     (r"\)", RESERVED),
-    (r"\+", RESERVED),
-    (r"-", RESERVED),
-    (r"\*", RESERVED),
-    (r"/", RESERVED),
-    (r"<=", RESERVED),
-    (r"<", RESERVED),
-    (r">=", RESERVED),
-    (r">", RESERVED),
-    (r"=", RESERVED),
-    (r"and", RESERVED),
-    (r"or", RESERVED),
-    (r"not", RESERVED),
-    (r"if", RESERVED),
-    (r"defun", RESERVED),
-    (r"mod", FUNC),
     (r"prints", FUNC),
     (r"printi", FUNC),
     (r"read", FUNC),
-    (r"[0-9]+", INT),
+    (r"set", SPECIAL),
+    (r"[-]?[0-9]+", INT),
     (r"\"(.*?)\"", STR),
     (r"[A-Za-z][A-Za-z0-9_]*", ID),
 ]
