@@ -265,6 +265,15 @@ def special_statement(node: ASTNode) -> Statement:
         args = [ReferenceStatement(symbol=key.token.string), ast_to_statement(val)]
         global_context.require_variable(key.token.string, args[1].ret_type)
         return InvokeStatement(args[1].ret_type, name, args)
+    if name == "if":
+        assert len(children) == 4, "if statement must contains condition and 2 options"
+        cond, opt1, opt2 = children[1], children[2], children[3]
+        cond_arg = ast_to_statement(cond)
+        assert cond_arg.ret_type == Type.INT_TYPE, f"condition must return int, got {cond_arg.ret_type}"
+        args = [cond_arg, ast_to_statement(opt1), ast_to_statement(opt2)]
+        assert args[1].ret_type == args[2].ret_type, f"options must have same ret type, " \
+                                                     f"got {args[1].ret_type} and {args[2].ret_type}"
+        return InvokeStatement(args[1].ret_type, name, args)
     raise NotImplementedError(f"unknown special statement, got {name}")
 
 
@@ -287,6 +296,17 @@ def math_statement(node: ASTNode) -> Statement:
     return InvokeStatement(Type.INT_TYPE, name, args)
 
 
+def bool_statement(node: ASTNode):
+    children = node.children
+    name = children[0].token.string
+    if name == "=":
+        assert len(children) == 3, "= statement must contains of 2 values to compare"
+        args = [ast_to_statement(children[1]), ast_to_statement(children[2])]
+        assert args[0].ret_type == args[1].ret_type == Type.INT_TYPE, "= can compare only ints"
+        return InvokeStatement(Type.INT_TYPE, name, args)
+    raise NotImplementedError(f"unknown boolean statement, got {name}")
+
+
 def ast_to_statement(node: ASTNode) -> Statement:
     children = node.children
     if len(children) > 0:
@@ -297,6 +317,8 @@ def ast_to_statement(node: ASTNode) -> Statement:
             return special_statement(node)
         if tag == lexer.MATH:
             return math_statement(node)
+        if tag == lexer.BOOL:
+            return bool_statement(node)
         raise NotImplementedError(f"ast to statement translation, got {tag}")
     tag = node.token.tag
     if tag in (lexer.STR, lexer.INT):
@@ -354,43 +376,50 @@ def translate_set_statement(set_st: InvokeStatement) -> list[Term]:
 math_opcode = {"mod": Opcode.MODULO, "+": Opcode.ADD, "-": Opcode.SUBTRACT, "*": Opcode.MULTIPLY, "/": Opcode.DIVIDE}
 
 
-def translate_math_statement(statement: InvokeStatement, optimize2: bool = False) -> list[Term]:
+def translate_math_statement(statement: InvokeStatement) -> list[Term]:
     code = []
     opcode = math_opcode[statement.name]
-    if optimize2:
-        if len(statement.args) == 2:
-            code.extend(translate_invoke_statement_argument(statement.args[1]))
-            code.append(Term(Opcode.PUSH))
-            code.extend(translate_invoke_statement_argument(statement.args[0]))
-            code.append(Term(opcode, Address(AddressType.RELATIVE_SPR, 0)))
-            code.append(Term(Opcode.POPN))
-            return code
-        first_arg = statement.args[0]
-        code.extend(translate_invoke_statement_argument(first_arg))
-        code.append(Term(Opcode.PUSH))
-        for arg in statement.args[1:]:
-            code.extend(translate_invoke_statement_argument(arg))
-            code.append(Term(opcode, Address(AddressType.RELATIVE_SPR, 0)))
-            code.append(Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 0)))
-        code.append(Term(Opcode.POP))
-        return code
-    first_arg = statement.args[0]
-    code.extend(translate_invoke_statement_argument(first_arg))
+    last_arg = statement.args[-1]
+    code.extend(translate_invoke_statement_argument(last_arg))
     code.append(Term(Opcode.PUSH))
-    for arg in statement.args[1:-1]:
+    for arg in statement.args[-2::-1]:
         code.extend(translate_invoke_statement_argument(arg))
-        code.append(Term(Opcode.PUSH))
-        code.append(Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 1)))
         code.append(Term(opcode, Address(AddressType.RELATIVE_SPR, 0)))
-        code.append(Term(Opcode.POPN))
         code.append(Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 0)))
-    code.extend(translate_invoke_statement_argument(statement.args[-1]))
-    code.append(Term(Opcode.PUSH))
-    code.append(Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 1)))
-    code.append(Term(opcode, Address(AddressType.RELATIVE_SPR, 0)))
-    code.append(Term(Opcode.POPN))
-    code.append(Term(Opcode.POPN))
+    code.append(Term(Opcode.POP))
     return code
+
+
+bool_opcode = {"=": Opcode.BRANCH_ZERO, ">=": Opcode.BRANCH_GREATER_EQUALS}
+
+
+def translate_bool_statement(statement: InvokeStatement) -> list[Term]:
+    code = []
+    opcode = bool_opcode[statement.name]
+    code.extend(translate_invoke_statement_argument(statement.args[1]))
+    code.append(Term(Opcode.PUSH))
+    code.extend(translate_invoke_statement_argument(statement.args[0]))
+    code.extend([
+        Term(Opcode.COMPARE, Address(AddressType.RELATIVE_SPR, 0)),
+        Term(Opcode.POPN),
+        Term(opcode, Address(AddressType.RELATIVE_IPR, 3)),
+        Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
+        Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, 2)),
+        Term(Opcode.LOAD, Address(AddressType.EXACT, 1)),
+    ])
+    return code
+
+
+def translate_if_statement(statement: InvokeStatement) -> list[Term]:
+    cond_code = translate_invoke_statement_argument(statement.args[0])
+    opt1_code = translate_invoke_statement_argument(statement.args[1])
+    opt2_code = translate_invoke_statement_argument(statement.args[2])
+    opt1_code.append(Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, len(opt2_code) + 1)))
+    cond_code.extend([
+        Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
+        Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, len(opt1_code) + 1))
+    ])
+    return [*cond_code, *opt1_code, *opt2_code]
 
 
 def translate_invoke_statement(statement: InvokeStatement) -> list[Term]:
@@ -398,6 +427,10 @@ def translate_invoke_statement(statement: InvokeStatement) -> list[Term]:
         return translate_set_statement(statement)
     if statement.name in ("mod", "+", "-", "/", "*"):
         return translate_math_statement(statement)
+    if statement.name in ("=", ">="):
+        return translate_bool_statement(statement)
+    if statement.name == "if":
+        return translate_if_statement(statement)
     global_context.require_func(statement.name)
     if statement.name == "read":
         return translate_read_statement(statement)

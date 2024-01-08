@@ -10,6 +10,7 @@ STR = "STR"
 ID = "ID"
 SPECIAL = "SPECIAL"
 MATH = "MATH"
+BOOL = "BOOL"
 
 token_expressions = [
     (r"[ \n\t]+", None),
@@ -20,6 +21,9 @@ token_expressions = [
     (r"printi", FUNC),
     (r"read", FUNC),
     (r"set", SPECIAL),
+    (r"if", SPECIAL),
+    (r"=", BOOL),
+    (r">=", BOOL),
     (r"[-]?[0-9]+", INT),
     (r"\+", MATH),
     (r"-", MATH),
