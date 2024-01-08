@@ -147,6 +147,7 @@ class GlobalContext:
     def __init__(self):
         self.function_table: dict[str, FuncInfo] = {}
         self.const_table: set[str | int] = set()
+        self.var_table: dict[str, Type] = {}
         self.anon_var_table: dict[str, tuple[int, int]] = {}
         self.anon_var_pointer = 0
         self.anon_var_counter = 0
@@ -173,8 +174,14 @@ class GlobalContext:
         self.anon_var_pointer += size
         return name
 
-    def clear_anon_variables(self):
-        self.anon_var_pointer = 0
+    def require_variable(self, name: str, t: Type):
+        assert t != Type.UNK_TYPE, f"unexpected variable type, got {t}"
+        self.var_table[name] = t
+
+    def variable_type(self, name: str) -> Type:
+        if name in self.var_table:
+            return self.var_table[name]
+        return Type.UNK_TYPE
 
 
 global_context = GlobalContext()
@@ -255,18 +262,29 @@ def special_statement(node: ASTNode) -> Statement:
         assert len(children) == 3, "Set statement must contains of variable name and value to set"
         key, val = children[1], children[2]
         assert key.token.tag == lexer.ID, f"variable name must be ID, got {key.token}"
-        if len(val.children) > 0:
-            value_name = val.token.string
-            assert value_name == "read", f"allow only read or const with set, got {value_name}"
-        else:
-            assert val.token.tag in (lexer.INT, lexer.STR), f"allow only read or const with set, got {val.token.tag}"
         args = [ReferenceStatement(symbol=key.token.string), ast_to_statement(val)]
+        global_context.require_variable(key.token.string, args[1].ret_type)
         return InvokeStatement(args[1].ret_type, name, args)
     raise NotImplementedError(f"unknown special statement, got {name}")
 
 
 def reference_statement(node: ASTNode) -> Statement:
-    raise NotImplementedError()
+    symbol = node.token.string
+    return ReferenceStatement(global_context.variable_type(symbol), symbol)
+
+
+def math_statement(node: ASTNode) -> Statement:
+    children = node.children
+    name = children[0].token.string
+    assert name in ("mod", "+", "-", "/", "*"), f"unknown math statement, got {name}"
+    if name in ("mod", "-", "/"):
+        assert len(children) == 3, f"math statement can operate only with 2 args, got {len(children)}"
+    args = []
+    for child in children[1:]:
+        statement = ast_to_statement(child)
+        assert statement.ret_type == Type.INT_TYPE, f"math statements can operate with INT, got {statement.ret_type}"
+        args.append(statement)
+    return InvokeStatement(Type.INT_TYPE, name, args)
 
 
 def ast_to_statement(node: ASTNode) -> Statement:
@@ -277,6 +295,8 @@ def ast_to_statement(node: ASTNode) -> Statement:
             return invoke_statement(node)
         if tag == lexer.SPECIAL:
             return special_statement(node)
+        if tag == lexer.MATH:
+            return math_statement(node)
         raise NotImplementedError(f"ast to statement translation, got {tag}")
     tag = node.token.tag
     if tag in (lexer.STR, lexer.INT):
@@ -301,6 +321,8 @@ def translate_invoke_statement_argument(arg: Statement) -> list[Term]:
         arg_code.append(Term(Opcode.LOAD, arg.val))
     elif isinstance(arg, InvokeStatement):
         arg_code.extend(translate_invoke_statement(arg))
+    elif isinstance(arg, ReferenceStatement):
+        arg_code.append(Term(Opcode.LOAD, arg.symbol))
     else:
         raise NotImplementedError(f"unknown type of InvokeStatement argument, got {arg}")
     return arg_code
@@ -321,12 +343,61 @@ def translate_printi_statement(printi: InvokeStatement) -> list[Term]:
 
 
 def translate_set_statement(set_st: InvokeStatement) -> list[Term]:
-    raise NotImplementedError()
+    variable, value = set_st.args[0], set_st.args[1]
+    assert isinstance(variable, ReferenceStatement), f"unexpected variable statement type, got {variable}"
+    global_context.require_variable(variable.symbol, value.ret_type)
+    code = translate_invoke_statement_argument(value)
+    code.append(Term(Opcode.STORE, variable.symbol))
+    return code
+
+
+math_opcode = {"mod": Opcode.MODULO, "+": Opcode.ADD, "-": Opcode.SUBTRACT, "*": Opcode.MULTIPLY, "/": Opcode.DIVIDE}
+
+
+def translate_math_statement(statement: InvokeStatement, optimize2: bool = False) -> list[Term]:
+    code = []
+    opcode = math_opcode[statement.name]
+    if optimize2:
+        if len(statement.args) == 2:
+            code.extend(translate_invoke_statement_argument(statement.args[1]))
+            code.append(Term(Opcode.PUSH))
+            code.extend(translate_invoke_statement_argument(statement.args[0]))
+            code.append(Term(opcode, Address(AddressType.RELATIVE_SPR, 0)))
+            code.append(Term(Opcode.POPN))
+            return code
+        first_arg = statement.args[0]
+        code.extend(translate_invoke_statement_argument(first_arg))
+        code.append(Term(Opcode.PUSH))
+        for arg in statement.args[1:]:
+            code.extend(translate_invoke_statement_argument(arg))
+            code.append(Term(opcode, Address(AddressType.RELATIVE_SPR, 0)))
+            code.append(Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 0)))
+        code.append(Term(Opcode.POP))
+        return code
+    first_arg = statement.args[0]
+    code.extend(translate_invoke_statement_argument(first_arg))
+    code.append(Term(Opcode.PUSH))
+    for arg in statement.args[1:-1]:
+        code.extend(translate_invoke_statement_argument(arg))
+        code.append(Term(Opcode.PUSH))
+        code.append(Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 1)))
+        code.append(Term(opcode, Address(AddressType.RELATIVE_SPR, 0)))
+        code.append(Term(Opcode.POPN))
+        code.append(Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 0)))
+    code.extend(translate_invoke_statement_argument(statement.args[-1]))
+    code.append(Term(Opcode.PUSH))
+    code.append(Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 1)))
+    code.append(Term(opcode, Address(AddressType.RELATIVE_SPR, 0)))
+    code.append(Term(Opcode.POPN))
+    code.append(Term(Opcode.POPN))
+    return code
 
 
 def translate_invoke_statement(statement: InvokeStatement) -> list[Term]:
     if statement.name == "set":
         return translate_set_statement(statement)
+    if statement.name in ("mod", "+", "-", "/", "*"):
+        return translate_math_statement(statement)
     global_context.require_func(statement.name)
     if statement.name == "read":
         return translate_read_statement(statement)
@@ -361,6 +432,7 @@ class Code:
 
         self.symbols: set[str] = set()
         self.const_table: dict[str | int, int] = {}
+        self.var_table: dict[str, int] = {}
         self.func_table: dict[str, int] = {}
 
         self.init_global_context(context)
@@ -380,6 +452,11 @@ class Code:
             self.symbols.add(str(symbol))
             self.data_memory.append((self.data_pointer, len(data), str(symbol), data))
             self.data_pointer += len(data)
+
+        for symbol in context.var_table:
+            self.var_table[symbol] = self.data_pointer
+            self.symbols.add(symbol)
+            self.data_pointer += 1
 
         for symbol in context.anon_var_table:
             offset, _ = context.anon_var_table[symbol]
@@ -407,12 +484,16 @@ class Code:
             for instr in block[3]:
                 if isinstance(instr.arg, str):
                     assert instr.arg in self.symbols, f"unknown symbol, got {instr.arg}"
+                    instr.desc = instr.arg
                     if instr.arg in self.const_table:
                         instr.arg = Address(AddressType.EXACT, self.const_table[instr.arg])
+                    elif instr.arg in self.var_table:
+                        instr.arg = Address(AddressType.ABSOLUTE, self.var_table[instr.arg])
                     else:
                         instr.arg = Address(AddressType.ABSOLUTE, self.func_table[instr.arg])
                 elif isinstance(instr.arg, int):
                     assert str(instr.arg) in self.symbols, f"unknown symbol, got {instr.arg}"
+                    instr.desc = str(instr.arg)
                     instr.arg = Address(AddressType.ABSOLUTE, self.const_table[instr.arg])
 
     def __len__(self):
@@ -423,7 +504,6 @@ def translate_into_code(statements: list[Statement]) -> Code:
     start_code = []
     for s in statements:
         start_code.extend(translate_statement(s))
-        global_context.clear_anon_variables()
     start_code.append(Term(Opcode.HALT))
     return Code(global_context, start_code)
 

@@ -9,6 +9,7 @@ INT = "INT"
 STR = "STR"
 ID = "ID"
 SPECIAL = "SPECIAL"
+MATH = "MATH"
 
 token_expressions = [
     (r"[ \n\t]+", None),
@@ -20,6 +21,11 @@ token_expressions = [
     (r"read", FUNC),
     (r"set", SPECIAL),
     (r"[-]?[0-9]+", INT),
+    (r"\+", MATH),
+    (r"-", MATH),
+    (r"\*", MATH),
+    (r"/", MATH),
+    (r"mod", MATH),
     (r"\"(.*?)\"", STR),
     (r"[A-Za-z][A-Za-z0-9_]*", ID),
 ]

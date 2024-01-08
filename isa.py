@@ -92,11 +92,15 @@ class Address:
 
 
 class Term:
-    def __init__(self, op: Opcode, arg: str | int | Address | None = None):
+    def __init__(self, op: Opcode, arg: str | int | Address | None = None, desc: str | None = None):
         self.op = op
         self.arg = arg
+        self.desc = desc
 
     def __str__(self):
-        if self.arg is None:
-            return f"{self.op.value[0]}"
-        return f"{self.op.value[0]} {self.arg}"
+        s = f"{self.op.value[0]}"
+        if self.arg:
+            s += f" {self.arg}"
+        if self.desc:
+            s += f"\t\t\t({self.desc})"
+        return s

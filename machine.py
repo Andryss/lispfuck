@@ -199,11 +199,11 @@ class DataPath:
             output = left * right
         elif op == AluOp.MOD:
             assert left >= 0, f"mod can performed only with non-negatives, got left={left}"
-            assert right >= 0, f"mod can performed only with non-negatives, got right={right}"
+            assert right > 0, f"mod can performed only with positive argument, got right={right}"
             output = left % right
         elif op == AluOp.DIV:
             assert left >= 0, f"div can performed only with non-negatives, got left={left}"
-            assert right >= 0, f"div can performed only with non-negatives, got right={right}"
+            assert right > 0, f"div can performed only with positive argument, got right={right}"
             output = left // right
         else:
             raise NotImplementedError(op)
@@ -238,8 +238,9 @@ class DataPath:
             f"bur={hex(self.bur)} adr={hex(self.adr)} dar={hex(self.dar)} spr={hex(self.spr)} "
             f"flr={hex(self.flr)}"
         )
-        tokens_reps = f"input={self.input_tokens} output={self.output_tokens}"
-        return f"{regs_repr} {tokens_reps}"
+        tokens_repr = f"input={self.input_tokens} output={self.output_tokens}"
+        stack_repr = f"stack={[hex(val) for val in self.data_memory[self.spr:]]}"
+        return f"{regs_repr} {tokens_repr} {stack_repr}"
 
 
 class ControlUnit:
@@ -371,6 +372,7 @@ class ControlUnit:
             return
         if instr.op == Opcode.MULTIPLY:
             self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, alu_op=AluOp.MUL, set_regs=[Reg.ACR])
+            return
         # DIVIDE
         self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, alu_op=AluOp.DIV, set_regs=[Reg.ACR])
 
