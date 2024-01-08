@@ -1,12 +1,12 @@
-(defun gcd (a b)
+(defun gcd:i (a:i b:i)
   (if (= b 0)
       a
       (gcd b (mod a b))))
 
-(defun lcm (a b)
+(defun lcm:i (a:i b:i)
   (/ (* a b) (gcd a b)))
 
-(defun smallest_multiple (n)
+(defun smallest_multiple:i (n:i)
   (if (= n 1)
       1
       (lcm n (smallest_multiple (- n 1)))))

@@ -143,6 +143,37 @@ predefined_funcs: dict[str, FuncInfo] = {
 }
 
 
+class FuncVars:
+    def __init__(self):
+        self.args: dict[str, Type] = {}
+
+    def add_var(self, name: str, t: Type):
+        self.args[name] = t
+
+    def has_var(self, name: str) -> bool:
+        return name in self.args
+
+    def var_type(self, name: str) -> Type:
+        return self.args[name]
+
+
+class FuncContext:
+    def __init__(self):
+        self.args_table: dict[str, int] = {}
+
+    def has_in_acr(self) -> bool:
+        return -1 in self.args_table.values()
+
+    def get_in_acr(self) -> str:
+        return list(self.args_table.keys())[list(self.args_table.values()).index(-1)]
+
+    def on_push(self):
+        self.args_table = {k: v + 1 for k, v in self.args_table.items()}
+
+    def on_pop(self):
+        self.args_table = {k: v - 1 for k, v in self.args_table.items()}
+
+
 class GlobalContext:
     def __init__(self):
         self.function_table: dict[str, FuncInfo] = {}
@@ -151,6 +182,9 @@ class GlobalContext:
         self.anon_var_table: dict[str, tuple[int, int]] = {}
         self.anon_var_pointer = 0
         self.anon_var_counter = 0
+
+        self.func_vars: FuncVars | None = None
+        self.func_context: FuncContext | None = None
 
     def require_func(self, func: str):
         assert func in predefined_funcs, f"Unknown func {func}"
@@ -179,9 +213,20 @@ class GlobalContext:
         self.var_table[name] = t
 
     def variable_type(self, name: str) -> Type:
+        if self.func_vars and self.func_vars.has_var(name):
+            return self.func_vars.var_type(name)
         if name in self.var_table:
             return self.var_table[name]
         return Type.UNK_TYPE
+
+    def set_func_vars(self, fv: FuncVars | None):
+        self.func_vars = fv
+
+    def set_func_context(self, fc: FuncContext | None):
+        self.func_context = fc
+
+    def get_func_context(self) -> FuncContext | None:
+        return self.func_context
 
 
 global_context = GlobalContext()
@@ -271,8 +316,9 @@ def special_statement(node: ASTNode) -> Statement:
         cond_arg = ast_to_statement(cond)
         assert cond_arg.ret_type == Type.INT_TYPE, f"condition must return int, got {cond_arg.ret_type}"
         args = [cond_arg, ast_to_statement(opt1), ast_to_statement(opt2)]
-        assert args[1].ret_type == args[2].ret_type, f"options must have same ret type, " \
-                                                     f"got {args[1].ret_type} and {args[2].ret_type}"
+        assert args[1].ret_type == args[2].ret_type, (
+            f"options must have same ret type, " f"got {args[1].ret_type} and {args[2].ret_type}"
+        )
         return InvokeStatement(args[1].ret_type, name, args)
     raise NotImplementedError(f"unknown special statement, got {name}")
 
@@ -307,6 +353,44 @@ def bool_statement(node: ASTNode):
     raise NotImplementedError(f"unknown boolean statement, got {name}")
 
 
+def parse_arg(arg: str) -> (str, Type):
+    idx = arg.find(":")
+    name, ret_type = arg[:idx], arg[idx + 1 :]
+    assert ret_type in ("i", "s"), f"ret type must be int or str, got {ret_type}"
+    ret_type = Type.INT_TYPE if ret_type == "i" else Type.STR_TYPE
+    return name, ret_type
+
+
+def defun_statement(node: ASTNode) -> Statement:
+    children = node.children
+    name = children[0].token.string
+    assert len(children) == 4, "defunc statement must contains of name, arguments and body"
+
+    func_name = children[1].token
+    assert func_name.tag == lexer.ARG, f"func name must be ARG, got {func_name.tag}"
+    func_name, func_ret_type = parse_arg(func_name.string)
+
+    args = children[2].children
+    assert children[2].token.string == "(", f"arguments must be in parenthesis, got {children[2].token}"
+
+    name_st = ReferenceStatement(func_ret_type, func_name)
+    args_st = InvokeStatement()
+    func_vars = FuncVars()
+    arg_types = []
+    for arg in args:
+        assert arg.token.tag == lexer.ARG, f"args must be ARG, got {arg.token}"
+        arg_name, arg_type = parse_arg(arg.token.string)
+        args_st.args.append(ReferenceStatement(arg_type, arg_name))
+        func_vars.add_var(arg_name, arg_type)
+        arg_types.append(arg_type)
+
+    predefined_funcs[func_name] = FuncInfo(func_name, arg_types, func_ret_type)
+    global_context.set_func_vars(func_vars)
+    body_st = ast_to_statement(children[3])
+    global_context.set_func_vars(None)
+    return InvokeStatement(name=name, args=[name_st, args_st, body_st])
+
+
 def ast_to_statement(node: ASTNode) -> Statement:
     children = node.children
     if len(children) > 0:
@@ -319,6 +403,10 @@ def ast_to_statement(node: ASTNode) -> Statement:
             return math_statement(node)
         if tag == lexer.BOOL:
             return bool_statement(node)
+        if tag == lexer.DEFUNC:
+            return defun_statement(node)
+        if tag == lexer.ID:
+            return invoke_statement(node)
         raise NotImplementedError(f"ast to statement translation, got {tag}")
     tag = node.token.tag
     if tag in (lexer.STR, lexer.INT):
@@ -337,30 +425,58 @@ def extract_statements(root: ASTNode) -> list[Statement]:
 
 def translate_invoke_statement_argument(arg: Statement) -> list[Term]:
     arg_code = []
+    fc = global_context.get_func_context()
     if isinstance(arg, ValueStatement):
+        if fc and fc.has_in_acr():
+            arg_code.append(Term(Opcode.PUSH))
+            fc.on_push()
         arg_code.append(Term(Opcode.LOAD, Address(AddressType.EXACT, arg.val)))
     elif isinstance(arg, ConstStatement):
+        if fc and fc.has_in_acr():
+            arg_code.append(Term(Opcode.PUSH))
+            fc.on_push()
         arg_code.append(Term(Opcode.LOAD, arg.val))
     elif isinstance(arg, InvokeStatement):
         arg_code.extend(translate_invoke_statement(arg))
     elif isinstance(arg, ReferenceStatement):
-        arg_code.append(Term(Opcode.LOAD, arg.symbol))
+        if fc and fc.has_in_acr() and fc.get_in_acr() == arg.symbol:
+            pass
+        elif fc and arg.symbol in fc.args_table:
+            if fc.has_in_acr():
+                arg_code.append(Term(Opcode.PUSH))
+                fc.on_push()
+            arg_code.append(Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, fc.args_table[arg.symbol]), arg.symbol))
+        else:
+            arg_code.append(Term(Opcode.LOAD, arg.symbol))
     else:
         raise NotImplementedError(f"unknown type of InvokeStatement argument, got {arg}")
     return arg_code
 
 
 def translate_read_statement(read: InvokeStatement) -> list[Term]:
+    code = []
+    if global_context.get_func_context() and global_context.get_func_context().has_in_acr():
+        code.append(Term(Opcode.PUSH))
+        global_context.get_func_context().on_push()
     read.anon_var_name = global_context.require_anon_variable(128)
-    return [Term(Opcode.LOAD, read.anon_var_name), Term(Opcode.CALL, read.name)]
+    code.extend([Term(Opcode.LOAD, read.anon_var_name), Term(Opcode.CALL, read.name)])
+    return code
 
 
 def translate_printi_statement(printi: InvokeStatement) -> list[Term]:
+    code = []
+    if global_context.get_func_context() and global_context.get_func_context().has_in_acr():
+        code.append(Term(Opcode.PUSH))
+        global_context.get_func_context().on_push()
     global_context.require_func("prints")
     printi.anon_var_name = global_context.require_anon_variable(21, offset=20)
-    code = [Term(Opcode.LOAD, printi.anon_var_name), Term(Opcode.PUSH)]
+    code.extend([Term(Opcode.LOAD, printi.anon_var_name), Term(Opcode.PUSH)])
+    if global_context.get_func_context():
+        global_context.get_func_context().on_push()
     code.extend(translate_invoke_statement_argument(printi.args[0]))
     code.extend([Term(Opcode.CALL, printi.name), Term(Opcode.POPN)])
+    if global_context.get_func_context():
+        global_context.get_func_context().on_pop()
     return code
 
 
@@ -382,11 +498,15 @@ def translate_math_statement(statement: InvokeStatement) -> list[Term]:
     last_arg = statement.args[-1]
     code.extend(translate_invoke_statement_argument(last_arg))
     code.append(Term(Opcode.PUSH))
+    if global_context.get_func_context():
+        global_context.get_func_context().on_push()
     for arg in statement.args[-2::-1]:
         code.extend(translate_invoke_statement_argument(arg))
         code.append(Term(opcode, Address(AddressType.RELATIVE_SPR, 0)))
         code.append(Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 0)))
     code.append(Term(Opcode.POP))
+    if global_context.get_func_context():
+        global_context.get_func_context().on_pop()
     return code
 
 
@@ -398,44 +518,62 @@ def translate_bool_statement(statement: InvokeStatement) -> list[Term]:
     opcode = bool_opcode[statement.name]
     code.extend(translate_invoke_statement_argument(statement.args[1]))
     code.append(Term(Opcode.PUSH))
+    if global_context.get_func_context():
+        global_context.get_func_context().on_push()
     code.extend(translate_invoke_statement_argument(statement.args[0]))
-    code.extend([
-        Term(Opcode.COMPARE, Address(AddressType.RELATIVE_SPR, 0)),
-        Term(Opcode.POPN),
-        Term(opcode, Address(AddressType.RELATIVE_IPR, 3)),
-        Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
-        Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, 2)),
-        Term(Opcode.LOAD, Address(AddressType.EXACT, 1)),
-    ])
+    code.extend(
+        [
+            Term(Opcode.COMPARE, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.POPN),
+            Term(opcode, Address(AddressType.RELATIVE_IPR, 3)),
+            Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
+            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, 2)),
+            Term(Opcode.LOAD, Address(AddressType.EXACT, 1)),
+        ]
+    )
+    if global_context.get_func_context():
+        global_context.get_func_context().on_pop()
     return code
 
 
 def translate_if_statement(statement: InvokeStatement) -> list[Term]:
+    code = []
     cond_code = translate_invoke_statement_argument(statement.args[0])
     opt1_code = translate_invoke_statement_argument(statement.args[1])
     opt2_code = translate_invoke_statement_argument(statement.args[2])
     opt1_code.append(Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, len(opt2_code) + 1)))
-    cond_code.extend([
-        Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-        Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, len(opt1_code) + 1))
-    ])
-    return [*cond_code, *opt1_code, *opt2_code]
+    cond_code.extend(
+        [
+            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
+            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, len(opt1_code) + 1)),
+        ]
+    )
+    code.extend(cond_code)
+    code.extend(opt1_code)
+    code.extend(opt2_code)
+    return code
 
 
-def translate_invoke_statement(statement: InvokeStatement) -> list[Term]:
-    if statement.name == "set":
-        return translate_set_statement(statement)
-    if statement.name in ("mod", "+", "-", "/", "*"):
-        return translate_math_statement(statement)
-    if statement.name in ("=", ">="):
-        return translate_bool_statement(statement)
-    if statement.name == "if":
-        return translate_if_statement(statement)
-    global_context.require_func(statement.name)
-    if statement.name == "read":
-        return translate_read_statement(statement)
-    if statement.name == "printi":
-        return translate_printi_statement(statement)
+def translate_defun_statement(defun: InvokeStatement) -> list[Term]:
+    predefined_code = []
+    func_name = defun.args[0].symbol
+    arguments = defun.args[1].args
+    func_context = FuncContext()
+    first_argument = arguments[0]
+    func_context.args_table[first_argument.symbol] = -1
+    for i, argument in enumerate(arguments[1:]):
+        func_context.args_table[argument.symbol] = 1 + i
+    global_context.set_func_context(func_context)
+    predefined_code.extend(translate_invoke_statement_argument(defun.args[2]))
+    if 0 in func_context.args_table:
+        predefined_code.append(Term(Opcode.POPN))
+    global_context.set_func_context(None)
+    predefined_code.append(Term(Opcode.RETURN))
+    predefined_funcs[func_name].code = predefined_code
+    return []
+
+
+def translate_invoke_statement_common(statement: InvokeStatement) -> list[Term]:
     args = statement.args
     code = []
     for arg in args[-1:0:-1]:
@@ -447,6 +585,25 @@ def translate_invoke_statement(statement: InvokeStatement) -> list[Term]:
     for _ in range(len(args) - 1):
         code.append(Term(Opcode.POPN))
     return code
+
+
+def translate_invoke_statement(statement: InvokeStatement) -> list[Term]:
+    if statement.name == "set":
+        return translate_set_statement(statement)
+    if statement.name in ("mod", "+", "-", "/", "*"):
+        return translate_math_statement(statement)
+    if statement.name in ("=", ">="):
+        return translate_bool_statement(statement)
+    if statement.name == "if":
+        return translate_if_statement(statement)
+    if statement.name == "defun":
+        return translate_defun_statement(statement)
+    global_context.require_func(statement.name)
+    if statement.name == "read":
+        return translate_read_statement(statement)
+    if statement.name == "printi":
+        return translate_printi_statement(statement)
+    return translate_invoke_statement_common(statement)
 
 
 def translate_statement(statement: Statement) -> list[Term]:

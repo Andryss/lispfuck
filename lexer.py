@@ -11,6 +11,8 @@ ID = "ID"
 SPECIAL = "SPECIAL"
 MATH = "MATH"
 BOOL = "BOOL"
+DEFUNC = "DEFUNC"
+ARG = "ARG"
 
 token_expressions = [
     (r"[ \n\t]+", None),
@@ -30,13 +32,15 @@ token_expressions = [
     (r"\*", MATH),
     (r"/", MATH),
     (r"mod", MATH),
+    (r"defun", DEFUNC),
+    (r"[A-Za-z][A-Za-z_]*:[is]", ARG),
     (r"\"(.*?)\"", STR),
-    (r"[A-Za-z][A-Za-z0-9_]*", ID),
+    (r"[A-Za-z][A-Za-z_]*", ID),
 ]
 
 
 class TokenInfo:
-    def __init__(self, tag=None, string=None, pos=None):
+    def __init__(self, tag: str, string: str, pos: int):
         self.tag = tag
         self.string = string
         self.pos = pos
