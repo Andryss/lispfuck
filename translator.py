@@ -565,7 +565,7 @@ def translate_defun_statement(defun: InvokeStatement) -> list[Term]:
         func_context.args_table[argument.symbol] = 1 + i
     global_context.set_func_context(func_context)
     predefined_code.extend(translate_invoke_statement_argument(defun.args[2]))
-    if 0 in func_context.args_table:
+    if 0 in func_context.args_table.values():
         predefined_code.append(Term(Opcode.POPN))
     global_context.set_func_context(None)
     predefined_code.append(Term(Opcode.RETURN))
@@ -579,11 +579,15 @@ def translate_invoke_statement_common(statement: InvokeStatement) -> list[Term]:
     for arg in args[-1:0:-1]:
         code.extend(translate_invoke_statement_argument(arg))
         code.append(Term(Opcode.PUSH))
+        if global_context.get_func_context():
+            global_context.get_func_context().on_push()
     if len(args) > 0:
         code.extend(translate_invoke_statement_argument(args[0]))
     code.append(Term(Opcode.CALL, statement.name))
     for _ in range(len(args) - 1):
         code.append(Term(Opcode.POPN))
+        if global_context.get_func_context():
+            global_context.get_func_context().on_pop()
     return code
 
 
@@ -846,7 +850,7 @@ def main(src: str, dst: str):
     logging.debug(f"Start reading from {src}")
     with open(src, encoding="utf-8") as f:
         src = f.read()
-    preview = (src[:10] + "..." + src[-10:]).replace("\n", "")
+    preview = ('"' + src[:20] + '..."').replace("\n", "")
     logging.debug(f"Read {preview} from file")
 
     logging.debug("Start translating text into code")

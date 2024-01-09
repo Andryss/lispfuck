@@ -419,7 +419,7 @@ class ControlUnit:
         return f"{dp_repr}"
 
 
-def simulation(code: Code, input_tokens: list[str], data_memory_size: int = 0x1FFF, limit: int = 1_000):
+def simulation(code: Code, input_tokens: list[str], data_memory_size: int = 0x1FFF, limit: int = 5_000):
     data_path = DataPath(data_memory_size, code.data, input_tokens)
     control_unit = ControlUnit(code.instructions, data_path)
     instruction_proceed = 0
@@ -432,6 +432,8 @@ def simulation(code: Code, input_tokens: list[str], data_memory_size: int = 0x1F
         logging.warning("Input buffer is empty")
     except StopIteration:
         pass
+
+    logging.debug(f"Proceed {instruction_proceed} instructions")
 
     if instruction_proceed >= limit:
         logging.warning(f"Limit {limit} exceeded")
