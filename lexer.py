@@ -45,7 +45,7 @@ class TokenInfo:
         self.string = string
         self.pos = pos
 
-    def __str__(self):
+    def __repr__(self):
         return f"TokenInfo(string={self.string},tag={self.tag},pos={self.pos})"
 
 

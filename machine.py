@@ -143,14 +143,18 @@ class DataPath:
         if self.adr == 5555:
             if len(self.input_tokens) == 0:
                 raise EOFError()
-            self.dar = ord(self.input_tokens.pop(0))
+            symbol = self.input_tokens.pop(0)
+            logging.debug(f"input: {symbol!r} <- {''.join(self.input_tokens)!r}")
+            self.dar = ord(symbol)
         else:
             self.dar = self.data_memory[self.adr]
 
     def signal_write_data_memory(self):
         if self.adr == 5556:
             assert 0 <= self.dar <= 0x10FFFF, f"dar contains unknown symbol, got {self.dar}"
-            self.output_tokens.append(chr(self.dar))
+            symbol = chr(self.dar)
+            logging.debug(f"output: {''.join(self.output_tokens)!r} <- {symbol!r}")
+            self.output_tokens.append(symbol)
         else:
             self.data_memory[self.adr] = self.dar
 
@@ -238,46 +242,63 @@ class DataPath:
             f"bur={hex(self.bur)} adr={hex(self.adr)} dar={hex(self.dar)} spr={hex(self.spr)} "
             f"flr={hex(self.flr)}"
         )
-        tokens_repr = f"input={self.input_tokens} output={self.output_tokens}"
-        stack_repr = f"stack={[hex(val) for val in self.data_memory[self.spr:]]}"
-        return f"{regs_repr} {tokens_repr} {stack_repr}"
+        stack_repr = f"stack_top={'?' if self.spr >= len(self.data_memory) else hex(self.data_memory[self.spr])}"
+        return f"{regs_repr} {stack_repr}"
 
 
 class ControlUnit:
     def __init__(self, program: list[Term], data_path: DataPath):
         self.program = program
         self.data_path = data_path
+        self.ticks = 0
+
+    def tick(self):
+        self.ticks += 1
 
     def execute_call_control_instruction(self, instr: Term):
         if instr.op == Opcode.CALL:
             assert instr.arg.kind == AddressType.ABSOLUTE, f"unsupported addressing for call, got {instr}"
             self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.ADR, Reg.SPR], opts=inv_right | inv_out | plus_1)
+            self.tick()
             self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.DAR], opts=plus_1)
+            self.tick()
             self.data_path.signal_write_data_memory()
+            self.tick()
             self.data_path.signal_alu(left=Reg.INR, set_regs=[Reg.IPR], opts=extend_20)
+            self.tick()
             return
         # RETURN
         self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.ADR])
+        self.tick()
         self.data_path.signal_read_data_memory()
+        self.tick()
         self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.IPR])
+        self.tick()
         self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.SPR], opts=plus_1)
+        self.tick()
 
     def execute_branch_control_instruction(self, instr: Term):
         if instr.op == Opcode.BRANCH_ZERO:
             assert instr.arg.kind == AddressType.RELATIVE_IPR, f"unsupported addressing for brz, got {instr}"
             if self.data_path.zero():
                 self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.BUR])
+                self.tick()
                 self.data_path.signal_alu(left=Reg.INR, right=Reg.BUR, set_regs=[Reg.IPR], opts=extend_20)
+                self.tick()
             else:
                 self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.IPR], opts=plus_1)
+                self.tick()
             return
         if instr.op == Opcode.BRANCH_GREATER_EQUALS:
             assert instr.arg.kind == AddressType.RELATIVE_IPR, f"unsupported addressing for brge, got {instr}"
             if self.data_path.negative() == self.data_path.overflow():
                 self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.BUR])
+                self.tick()
                 self.data_path.signal_alu(left=Reg.INR, right=Reg.BUR, set_regs=[Reg.IPR], opts=extend_20)
+                self.tick()
             else:
                 self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.IPR], opts=plus_1)
+                self.tick()
             return
         # BRANCH_ANY
         assert instr.arg.kind in (
@@ -286,9 +307,12 @@ class ControlUnit:
         ), f"unsupported addressing for br, got {instr}"
         if instr.arg.kind == AddressType.ABSOLUTE:
             self.data_path.signal_alu(left=Reg.INR, set_regs=[Reg.IPR], opts=extend_20)
+            self.tick()
         else:
             self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.BUR])
+            self.tick()
             self.data_path.signal_alu(left=Reg.INR, right=Reg.BUR, set_regs=[Reg.IPR], opts=extend_20)
+            self.tick()
 
     def execute_control_instruction(self, instr: Term) -> bool:
         opcode = instr.op
@@ -308,12 +332,17 @@ class ControlUnit:
             pass
         elif addr.kind == AddressType.ABSOLUTE:
             self.data_path.signal_alu(left=Reg.INR, set_regs=[Reg.ADR], opts=extend_20)
+            self.tick()
         elif addr.kind == AddressType.RELATIVE_SPR:
             self.data_path.signal_alu(left=Reg.INR, right=Reg.SPR, set_regs=[Reg.ADR], opts=extend_20)
+            self.tick()
         elif addr.kind == AddressType.RELATIVE_INDIRECT_SPR:
             self.data_path.signal_alu(left=Reg.INR, right=Reg.SPR, set_regs=[Reg.ADR], opts=extend_20)
+            self.tick()
             self.data_path.signal_read_data_memory()
+            self.tick()
             self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.ADR])
+            self.tick()
         else:
             raise NotImplementedError(f"unsupported address type for address decoding, got {instr}")
 
@@ -321,60 +350,84 @@ class ControlUnit:
         addr = instr.arg
         if addr.kind == AddressType.EXACT:
             self.data_path.signal_alu(left=Reg.INR, set_regs=[Reg.DAR], opts=extend_20)
+            self.tick()
         elif addr.kind in (AddressType.ABSOLUTE, AddressType.RELATIVE_SPR, AddressType.RELATIVE_INDIRECT_SPR):
             self.data_path.signal_read_data_memory()
+            self.tick()
         else:
             raise NotImplementedError(f"unsupported address type for value fetching, got {instr}")
 
     def execute_load_store(self, instr: Term):
         if instr.op == Opcode.LOAD:
             self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.ACR])
+            self.tick()
             return
         # STORE
         self.data_path.signal_alu(left=Reg.ACR, set_regs=[Reg.DAR])
+        self.tick()
         self.data_path.signal_write_data_memory()
+        self.tick()
 
     def execute_push_pop(self, instr: Term):
         if instr.op == Opcode.PUSH:
             self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.ADR, Reg.SPR], opts=inv_right | inv_out | plus_1)
+            self.tick()
             self.data_path.signal_alu(left=Reg.ACR, set_regs=[Reg.DAR])
+            self.tick()
             self.data_path.signal_write_data_memory()
+            self.tick()
             return
         if instr.op == Opcode.POP:
             self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.ADR])
+            self.tick()
             self.data_path.signal_read_data_memory()
+            self.tick()
             self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.ACR])
+            self.tick()
             self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.SPR], opts=plus_1)
+            self.tick()
             return
         # POPN
         self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.SPR], opts=plus_1)
+        self.tick()
 
     def execute_inc_dec(self, instr: Term):
         if instr.op == Opcode.INCREMENT:
             self.data_path.signal_read_data_memory()
+            self.tick()
             self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.DAR], opts=plus_1)
+            self.tick()
             self.data_path.signal_write_data_memory()
+            self.tick()
             return
         # DECREMENT
         self.data_path.signal_read_data_memory()
+        self.tick()
         self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.DAR], opts=inv_left)
+        self.tick()
         self.data_path.signal_write_data_memory()
+        self.tick()
 
     def execute_math(self, instr: Term):
         if instr.op == Opcode.MODULO:
             self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, alu_op=AluOp.MOD, set_regs=[Reg.ACR])
+            self.tick()
             return
         if instr.op == Opcode.ADD:
             self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, set_regs=[Reg.ACR])
+            self.tick()
             return
         if instr.op == Opcode.SUBTRACT:
             self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, set_regs=[Reg.ACR], opts=inv_right | plus_1)
+            self.tick()
             return
         if instr.op == Opcode.MULTIPLY:
             self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, alu_op=AluOp.MUL, set_regs=[Reg.ACR])
+            self.tick()
             return
         # DIVIDE
         self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, alu_op=AluOp.DIV, set_regs=[Reg.ACR])
+        self.tick()
 
     def execute(self, instr: Term):
         opcode = instr.op
@@ -386,12 +439,14 @@ class ControlUnit:
             self.execute_push_pop(instr)
         elif opcode == Opcode.COMPARE:
             self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, opts=inv_right | plus_1 | set_flags)
+            self.tick()
         elif opcode in (Opcode.INCREMENT, Opcode.DECREMENT):
             self.execute_inc_dec(instr)
         elif opcode in (Opcode.MODULO, Opcode.ADD, Opcode.SUBTRACT, Opcode.MULTIPLY, Opcode.DIVIDE):
             self.execute_math(instr)
         elif opcode == Opcode.INVERSE:
             self.data_path.signal_alu(left=Reg.ACR, set_regs=[Reg.ACR], opts=inv_left | plus_1)
+            self.tick()
         else:
             raise NotImplementedError(f"unsupported opcode for instruction executing, got {instr}")
 
@@ -415,8 +470,9 @@ class ControlUnit:
         logging.debug(self)
 
     def __repr__(self):
+        state_repr = f"tick={self.ticks}"
         dp_repr = f"{self.data_path}"
-        return f"{dp_repr}"
+        return f"{state_repr} {dp_repr}"
 
 
 def simulation(code: Code, input_tokens: list[str], data_memory_size: int = 0x1FFF, limit: int = 5_000):
@@ -433,32 +489,24 @@ def simulation(code: Code, input_tokens: list[str], data_memory_size: int = 0x1F
     except StopIteration:
         pass
 
-    logging.debug(f"Proceed {instruction_proceed} instructions")
-
     if instruction_proceed >= limit:
         logging.warning(f"Limit {limit} exceeded")
 
-    return "".join(data_path.output_tokens)
+    return "".join(data_path.output_tokens), instruction_proceed, control_unit.ticks
 
 
 def main(src: str, in_file: str):
-    logging.debug(f"Start reading from {src}")
     code = read_code(src)
-    logging.debug("Read code from file")
 
     input_tokens = []
-    logging.debug(f"Start reading input tokens {in_file}")
     with open(in_file) as f:
         input_text = f.read()
         for char in input_text:
             input_tokens.append(char)
-    logging.debug(f"Successfully read {len(input_tokens)} input tokens")
-
-    logging.debug("Simulation start")
-    output = simulation(code, input_tokens)
-    logging.debug("Simulation end")
+    output, instr, ticks = simulation(code, input_tokens)
 
     print(output)
+    print("instr: ", instr, "ticks: ", ticks)
 
 
 if __name__ == "__main__":

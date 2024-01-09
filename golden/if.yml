@@ -1,0 +1,382 @@
+in_source: |
+  (prints (if (prints (read)) (read) (read)))
+in_stdin: |
+  abc
+  def
+
+out_code: |
+  ##### Data section #####
+  <address> - <length> - <data>
+
+  ##### Instruction section #####
+  <address> - <hexcode> - <mnemonica>
+  #:
+  0x000 - 0x0c200021 - br *0x21			(start)
+  prints:
+  0x001 - 0x06000000 - push
+  0x002 - 0x06000000 - push
+  0x003 - 0x02500000 - ld **spr
+  0x004 - 0x09100000 - cmp #0x0
+  0x005 - 0x0a300004 - brz *ipr+0x4
+  0x006 - 0x032015b4 - st *0x15b4
+  0x007 - 0x0d400000 - inc *spr
+  0x008 - 0x0c3ffffb - br *ipr-0x5
+  0x009 - 0x07000000 - pop
+  0x00a - 0x11400000 - sub *spr
+  0x00b - 0x08000000 - popn
+  0x00c - 0x05000000 - ret
+  read:
+  0x00d - 0x06000000 - push
+  0x00e - 0x06000000 - push
+  0x00f - 0x02100000 - ld #0x0
+  0x010 - 0x06000000 - push
+  0x011 - 0x022015b3 - ld *0x15b3
+  0x012 - 0x0910000a - cmp #0xa
+  0x013 - 0x0a300008 - brz *ipr+0x8
+  0x014 - 0x03500001 - st **spr+0x1
+  0x015 - 0x0d400001 - inc *spr+0x1
+  0x016 - 0x0d400000 - inc *spr
+  0x017 - 0x02400000 - ld *spr
+  0x018 - 0x0910007f - cmp #0x7f
+  0x019 - 0x0a300002 - brz *ipr+0x2
+  0x01a - 0x0c3ffff7 - br *ipr-0x9
+  0x01b - 0x02100000 - ld #0x0
+  0x01c - 0x03500001 - st **spr+0x1
+  0x01d - 0x07000000 - pop
+  0x01e - 0x07000000 - pop
+  0x01f - 0x07000000 - pop
+  0x020 - 0x05000000 - ret
+  start:
+  0x021 - 0x02100000 - ld #0x0			(anon$0)
+  0x022 - 0x0420000d - call *0xd			(read)
+  0x023 - 0x04200001 - call *0x1			(prints)
+  0x024 - 0x09100000 - cmp #0x0
+  0x025 - 0x0a300004 - brz *ipr+0x4
+  0x026 - 0x02100080 - ld #0x80			(anon$1)
+  0x027 - 0x0420000d - call *0xd			(read)
+  0x028 - 0x0c300003 - br *ipr+0x3
+  0x029 - 0x02100100 - ld #0x100			(anon$2)
+  0x02a - 0x0420000d - call *0xd			(read)
+  0x02b - 0x04200001 - call *0x1			(prints)
+  0x02c - 0x01000000 - halt
+out_stdout: |
+  LoC: 2 code byte: 190 code instr: 45
+  ============================================================
+  abcdef
+  instr:  150 ticks:  426
+out_log: |
+  DEBUG   machine:execute_next_instruction br *0x21
+  DEBUG   machine:execute_next_instruction tick=1 acr=0x0 ipr=0x21 inr=0xc200021 bur=0x0 adr=0x0 dar=0x0 spr=0x1fff flr=0x0 stack_top=?
+  DEBUG   machine:execute_next_instruction ld #0x0
+  DEBUG   machine:execute_next_instruction tick=3 acr=0x0 ipr=0x22 inr=0x2100000 bur=0x0 adr=0x0 dar=0x0 spr=0x1fff flr=0x0 stack_top=?
+  DEBUG   machine:execute_next_instruction call *0xd
+  DEBUG   machine:execute_next_instruction tick=7 acr=0x0 ipr=0xd inr=0x420000d bur=0x0 adr=0x1ffe dar=0x23 spr=0x1ffe flr=0x0 stack_top=0x23
+  DEBUG   machine:execute_next_instruction push
+  DEBUG   machine:execute_next_instruction tick=10 acr=0x0 ipr=0xe inr=0x6000000 bur=0x0 adr=0x1ffd dar=0x0 spr=0x1ffd flr=0x0 stack_top=0x0
+  DEBUG   machine:execute_next_instruction push
+  DEBUG   machine:execute_next_instruction tick=13 acr=0x0 ipr=0xf inr=0x6000000 bur=0x0 adr=0x1ffc dar=0x0 spr=0x1ffc flr=0x0 stack_top=0x0
+  DEBUG   machine:execute_next_instruction ld #0x0
+  DEBUG   machine:execute_next_instruction tick=15 acr=0x0 ipr=0x10 inr=0x2100000 bur=0x0 adr=0x1ffc dar=0x0 spr=0x1ffc flr=0x0 stack_top=0x0
+  DEBUG   machine:execute_next_instruction push
+  DEBUG   machine:execute_next_instruction tick=18 acr=0x0 ipr=0x11 inr=0x6000000 bur=0x0 adr=0x1ffb dar=0x0 spr=0x1ffb flr=0x0 stack_top=0x0
+  DEBUG   machine:execute_next_instruction ld *0x15b3
+  DEBUG   machine:signal_read_data_memory input: 'a' <- 'bc\ndef\n'
+  DEBUG   machine:execute_next_instruction tick=21 acr=0x61 ipr=0x12 inr=0x22015b3 bur=0x0 adr=0x15b3 dar=0x61 spr=0x1ffb flr=0x0 stack_top=0x0
+  DEBUG   machine:execute_next_instruction cmp #0xa
+  DEBUG   machine:execute_next_instruction tick=23 acr=0x61 ipr=0x13 inr=0x910000a bur=0x0 adr=0x15b3 dar=0xa spr=0x1ffb flr=0x1 stack_top=0x0
+  DEBUG   machine:execute_next_instruction brz *ipr+0x8
+  DEBUG   machine:execute_next_instruction tick=24 acr=0x61 ipr=0x14 inr=0xa300008 bur=0x0 adr=0x15b3 dar=0xa spr=0x1ffb flr=0x1 stack_top=0x0
+  DEBUG   machine:execute_next_instruction st **spr+0x1
+  DEBUG   machine:execute_next_instruction tick=29 acr=0x61 ipr=0x15 inr=0x3500001 bur=0x0 adr=0x0 dar=0x61 spr=0x1ffb flr=0x1 stack_top=0x0
+  DEBUG   machine:execute_next_instruction inc *spr+0x1
+  DEBUG   machine:execute_next_instruction tick=33 acr=0x61 ipr=0x16 inr=0xd400001 bur=0x0 adr=0x1ffc dar=0x1 spr=0x1ffb flr=0x1 stack_top=0x0
+  DEBUG   machine:execute_next_instruction inc *spr
+  DEBUG   machine:execute_next_instruction tick=37 acr=0x61 ipr=0x17 inr=0xd400000 bur=0x0 adr=0x1ffb dar=0x1 spr=0x1ffb flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction ld *spr
+  DEBUG   machine:execute_next_instruction tick=40 acr=0x1 ipr=0x18 inr=0x2400000 bur=0x0 adr=0x1ffb dar=0x1 spr=0x1ffb flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction cmp #0x7f
+  DEBUG   machine:execute_next_instruction tick=42 acr=0x1 ipr=0x19 inr=0x910007f bur=0x0 adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x1
+  DEBUG   machine:execute_next_instruction brz *ipr+0x2
+  DEBUG   machine:execute_next_instruction tick=43 acr=0x1 ipr=0x1a inr=0xa300002 bur=0x0 adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x1
+  DEBUG   machine:execute_next_instruction br *ipr+0xffff7
+  DEBUG   machine:execute_next_instruction tick=45 acr=0x1 ipr=0x11 inr=0xc3ffff7 bur=0x1a adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x1
+  DEBUG   machine:execute_next_instruction ld *0x15b3
+  DEBUG   machine:signal_read_data_memory input: 'b' <- 'c\ndef\n'
+  DEBUG   machine:execute_next_instruction tick=48 acr=0x62 ipr=0x12 inr=0x22015b3 bur=0x1a adr=0x15b3 dar=0x62 spr=0x1ffb flr=0x8 stack_top=0x1
+  DEBUG   machine:execute_next_instruction cmp #0xa
+  DEBUG   machine:execute_next_instruction tick=50 acr=0x62 ipr=0x13 inr=0x910000a bur=0x1a adr=0x15b3 dar=0xa spr=0x1ffb flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction brz *ipr+0x8
+  DEBUG   machine:execute_next_instruction tick=51 acr=0x62 ipr=0x14 inr=0xa300008 bur=0x1a adr=0x15b3 dar=0xa spr=0x1ffb flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction st **spr+0x1
+  DEBUG   machine:execute_next_instruction tick=56 acr=0x62 ipr=0x15 inr=0x3500001 bur=0x1a adr=0x1 dar=0x62 spr=0x1ffb flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction inc *spr+0x1
+  DEBUG   machine:execute_next_instruction tick=60 acr=0x62 ipr=0x16 inr=0xd400001 bur=0x1a adr=0x1ffc dar=0x2 spr=0x1ffb flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction inc *spr
+  DEBUG   machine:execute_next_instruction tick=64 acr=0x62 ipr=0x17 inr=0xd400000 bur=0x1a adr=0x1ffb dar=0x2 spr=0x1ffb flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction ld *spr
+  DEBUG   machine:execute_next_instruction tick=67 acr=0x2 ipr=0x18 inr=0x2400000 bur=0x1a adr=0x1ffb dar=0x2 spr=0x1ffb flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction cmp #0x7f
+  DEBUG   machine:execute_next_instruction tick=69 acr=0x2 ipr=0x19 inr=0x910007f bur=0x1a adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x2
+  DEBUG   machine:execute_next_instruction brz *ipr+0x2
+  DEBUG   machine:execute_next_instruction tick=70 acr=0x2 ipr=0x1a inr=0xa300002 bur=0x1a adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x2
+  DEBUG   machine:execute_next_instruction br *ipr+0xffff7
+  DEBUG   machine:execute_next_instruction tick=72 acr=0x2 ipr=0x11 inr=0xc3ffff7 bur=0x1a adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x2
+  DEBUG   machine:execute_next_instruction ld *0x15b3
+  DEBUG   machine:signal_read_data_memory input: 'c' <- '\ndef\n'
+  DEBUG   machine:execute_next_instruction tick=75 acr=0x63 ipr=0x12 inr=0x22015b3 bur=0x1a adr=0x15b3 dar=0x63 spr=0x1ffb flr=0x8 stack_top=0x2
+  DEBUG   machine:execute_next_instruction cmp #0xa
+  DEBUG   machine:execute_next_instruction tick=77 acr=0x63 ipr=0x13 inr=0x910000a bur=0x1a adr=0x15b3 dar=0xa spr=0x1ffb flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction brz *ipr+0x8
+  DEBUG   machine:execute_next_instruction tick=78 acr=0x63 ipr=0x14 inr=0xa300008 bur=0x1a adr=0x15b3 dar=0xa spr=0x1ffb flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction st **spr+0x1
+  DEBUG   machine:execute_next_instruction tick=83 acr=0x63 ipr=0x15 inr=0x3500001 bur=0x1a adr=0x2 dar=0x63 spr=0x1ffb flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction inc *spr+0x1
+  DEBUG   machine:execute_next_instruction tick=87 acr=0x63 ipr=0x16 inr=0xd400001 bur=0x1a adr=0x1ffc dar=0x3 spr=0x1ffb flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction inc *spr
+  DEBUG   machine:execute_next_instruction tick=91 acr=0x63 ipr=0x17 inr=0xd400000 bur=0x1a adr=0x1ffb dar=0x3 spr=0x1ffb flr=0x1 stack_top=0x3
+  DEBUG   machine:execute_next_instruction ld *spr
+  DEBUG   machine:execute_next_instruction tick=94 acr=0x3 ipr=0x18 inr=0x2400000 bur=0x1a adr=0x1ffb dar=0x3 spr=0x1ffb flr=0x1 stack_top=0x3
+  DEBUG   machine:execute_next_instruction cmp #0x7f
+  DEBUG   machine:execute_next_instruction tick=96 acr=0x3 ipr=0x19 inr=0x910007f bur=0x1a adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x3
+  DEBUG   machine:execute_next_instruction brz *ipr+0x2
+  DEBUG   machine:execute_next_instruction tick=97 acr=0x3 ipr=0x1a inr=0xa300002 bur=0x1a adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x3
+  DEBUG   machine:execute_next_instruction br *ipr+0xffff7
+  DEBUG   machine:execute_next_instruction tick=99 acr=0x3 ipr=0x11 inr=0xc3ffff7 bur=0x1a adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x3
+  DEBUG   machine:execute_next_instruction ld *0x15b3
+  DEBUG   machine:signal_read_data_memory input: '\n' <- 'def\n'
+  DEBUG   machine:execute_next_instruction tick=102 acr=0xa ipr=0x12 inr=0x22015b3 bur=0x1a adr=0x15b3 dar=0xa spr=0x1ffb flr=0x8 stack_top=0x3
+  DEBUG   machine:execute_next_instruction cmp #0xa
+  DEBUG   machine:execute_next_instruction tick=104 acr=0xa ipr=0x13 inr=0x910000a bur=0x1a adr=0x15b3 dar=0xa spr=0x1ffb flr=0x5 stack_top=0x3
+  DEBUG   machine:execute_next_instruction brz *ipr+0x8
+  DEBUG   machine:execute_next_instruction tick=106 acr=0xa ipr=0x1b inr=0xa300008 bur=0x13 adr=0x15b3 dar=0xa spr=0x1ffb flr=0x5 stack_top=0x3
+  DEBUG   machine:execute_next_instruction ld #0x0
+  DEBUG   machine:execute_next_instruction tick=108 acr=0x0 ipr=0x1c inr=0x2100000 bur=0x13 adr=0x15b3 dar=0x0 spr=0x1ffb flr=0x5 stack_top=0x3
+  DEBUG   machine:execute_next_instruction st **spr+0x1
+  DEBUG   machine:execute_next_instruction tick=113 acr=0x0 ipr=0x1d inr=0x3500001 bur=0x13 adr=0x3 dar=0x0 spr=0x1ffb flr=0x5 stack_top=0x3
+  DEBUG   machine:execute_next_instruction pop
+  DEBUG   machine:execute_next_instruction tick=117 acr=0x3 ipr=0x1e inr=0x7000000 bur=0x13 adr=0x1ffb dar=0x3 spr=0x1ffc flr=0x5 stack_top=0x3
+  DEBUG   machine:execute_next_instruction pop
+  DEBUG   machine:execute_next_instruction tick=121 acr=0x3 ipr=0x1f inr=0x7000000 bur=0x13 adr=0x1ffc dar=0x3 spr=0x1ffd flr=0x5 stack_top=0x0
+  DEBUG   machine:execute_next_instruction pop
+  DEBUG   machine:execute_next_instruction tick=125 acr=0x0 ipr=0x20 inr=0x7000000 bur=0x13 adr=0x1ffd dar=0x0 spr=0x1ffe flr=0x5 stack_top=0x23
+  DEBUG   machine:execute_next_instruction ret
+  DEBUG   machine:execute_next_instruction tick=129 acr=0x0 ipr=0x23 inr=0x5000000 bur=0x13 adr=0x1ffe dar=0x23 spr=0x1fff flr=0x5 stack_top=?
+  DEBUG   machine:execute_next_instruction call *0x1
+  DEBUG   machine:execute_next_instruction tick=133 acr=0x0 ipr=0x1 inr=0x4200001 bur=0x13 adr=0x1ffe dar=0x24 spr=0x1ffe flr=0x5 stack_top=0x24
+  DEBUG   machine:execute_next_instruction push
+  DEBUG   machine:execute_next_instruction tick=136 acr=0x0 ipr=0x2 inr=0x6000000 bur=0x13 adr=0x1ffd dar=0x0 spr=0x1ffd flr=0x5 stack_top=0x0
+  DEBUG   machine:execute_next_instruction push
+  DEBUG   machine:execute_next_instruction tick=139 acr=0x0 ipr=0x3 inr=0x6000000 bur=0x13 adr=0x1ffc dar=0x0 spr=0x1ffc flr=0x5 stack_top=0x0
+  DEBUG   machine:execute_next_instruction ld **spr
+  DEBUG   machine:execute_next_instruction tick=144 acr=0x61 ipr=0x4 inr=0x2500000 bur=0x13 adr=0x0 dar=0x61 spr=0x1ffc flr=0x5 stack_top=0x0
+  DEBUG   machine:execute_next_instruction cmp #0x0
+  DEBUG   machine:execute_next_instruction tick=146 acr=0x61 ipr=0x5 inr=0x9100000 bur=0x13 adr=0x0 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x0
+  DEBUG   machine:execute_next_instruction brz *ipr+0x4
+  DEBUG   machine:execute_next_instruction tick=147 acr=0x61 ipr=0x6 inr=0xa300004 bur=0x13 adr=0x0 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x0
+  DEBUG   machine:execute_next_instruction st *0x15b4
+  DEBUG   machine:signal_write_data_memory output: '' <- 'a'
+  DEBUG   machine:execute_next_instruction tick=150 acr=0x61 ipr=0x7 inr=0x32015b4 bur=0x13 adr=0x15b4 dar=0x61 spr=0x1ffc flr=0x1 stack_top=0x0
+  DEBUG   machine:execute_next_instruction inc *spr
+  DEBUG   machine:execute_next_instruction tick=154 acr=0x61 ipr=0x8 inr=0xd400000 bur=0x13 adr=0x1ffc dar=0x1 spr=0x1ffc flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction br *ipr+0xffffb
+  DEBUG   machine:execute_next_instruction tick=156 acr=0x61 ipr=0x3 inr=0xc3ffffb bur=0x8 adr=0x1ffc dar=0x1 spr=0x1ffc flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction ld **spr
+  DEBUG   machine:execute_next_instruction tick=161 acr=0x62 ipr=0x4 inr=0x2500000 bur=0x8 adr=0x1 dar=0x62 spr=0x1ffc flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction cmp #0x0
+  DEBUG   machine:execute_next_instruction tick=163 acr=0x62 ipr=0x5 inr=0x9100000 bur=0x8 adr=0x1 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction brz *ipr+0x4
+  DEBUG   machine:execute_next_instruction tick=164 acr=0x62 ipr=0x6 inr=0xa300004 bur=0x8 adr=0x1 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction st *0x15b4
+  DEBUG   machine:signal_write_data_memory output: 'a' <- 'b'
+  DEBUG   machine:execute_next_instruction tick=167 acr=0x62 ipr=0x7 inr=0x32015b4 bur=0x8 adr=0x15b4 dar=0x62 spr=0x1ffc flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction inc *spr
+  DEBUG   machine:execute_next_instruction tick=171 acr=0x62 ipr=0x8 inr=0xd400000 bur=0x8 adr=0x1ffc dar=0x2 spr=0x1ffc flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction br *ipr+0xffffb
+  DEBUG   machine:execute_next_instruction tick=173 acr=0x62 ipr=0x3 inr=0xc3ffffb bur=0x8 adr=0x1ffc dar=0x2 spr=0x1ffc flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction ld **spr
+  DEBUG   machine:execute_next_instruction tick=178 acr=0x63 ipr=0x4 inr=0x2500000 bur=0x8 adr=0x2 dar=0x63 spr=0x1ffc flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction cmp #0x0
+  DEBUG   machine:execute_next_instruction tick=180 acr=0x63 ipr=0x5 inr=0x9100000 bur=0x8 adr=0x2 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction brz *ipr+0x4
+  DEBUG   machine:execute_next_instruction tick=181 acr=0x63 ipr=0x6 inr=0xa300004 bur=0x8 adr=0x2 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction st *0x15b4
+  DEBUG   machine:signal_write_data_memory output: 'ab' <- 'c'
+  DEBUG   machine:execute_next_instruction tick=184 acr=0x63 ipr=0x7 inr=0x32015b4 bur=0x8 adr=0x15b4 dar=0x63 spr=0x1ffc flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction inc *spr
+  DEBUG   machine:execute_next_instruction tick=188 acr=0x63 ipr=0x8 inr=0xd400000 bur=0x8 adr=0x1ffc dar=0x3 spr=0x1ffc flr=0x1 stack_top=0x3
+  DEBUG   machine:execute_next_instruction br *ipr+0xffffb
+  DEBUG   machine:execute_next_instruction tick=190 acr=0x63 ipr=0x3 inr=0xc3ffffb bur=0x8 adr=0x1ffc dar=0x3 spr=0x1ffc flr=0x1 stack_top=0x3
+  DEBUG   machine:execute_next_instruction ld **spr
+  DEBUG   machine:execute_next_instruction tick=195 acr=0x0 ipr=0x4 inr=0x2500000 bur=0x8 adr=0x3 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x3
+  DEBUG   machine:execute_next_instruction cmp #0x0
+  DEBUG   machine:execute_next_instruction tick=197 acr=0x0 ipr=0x5 inr=0x9100000 bur=0x8 adr=0x3 dar=0x0 spr=0x1ffc flr=0x5 stack_top=0x3
+  DEBUG   machine:execute_next_instruction brz *ipr+0x4
+  DEBUG   machine:execute_next_instruction tick=199 acr=0x0 ipr=0x9 inr=0xa300004 bur=0x5 adr=0x3 dar=0x0 spr=0x1ffc flr=0x5 stack_top=0x3
+  DEBUG   machine:execute_next_instruction pop
+  DEBUG   machine:execute_next_instruction tick=203 acr=0x3 ipr=0xa inr=0x7000000 bur=0x5 adr=0x1ffc dar=0x3 spr=0x1ffd flr=0x5 stack_top=0x0
+  DEBUG   machine:execute_next_instruction sub *spr
+  DEBUG   machine:execute_next_instruction tick=206 acr=0x3 ipr=0xb inr=0x11400000 bur=0x5 adr=0x1ffd dar=0x0 spr=0x1ffd flr=0x5 stack_top=0x0
+  DEBUG   machine:execute_next_instruction popn
+  DEBUG   machine:execute_next_instruction tick=207 acr=0x3 ipr=0xc inr=0x8000000 bur=0x5 adr=0x1ffd dar=0x0 spr=0x1ffe flr=0x5 stack_top=0x24
+  DEBUG   machine:execute_next_instruction ret
+  DEBUG   machine:execute_next_instruction tick=211 acr=0x3 ipr=0x24 inr=0x5000000 bur=0x5 adr=0x1ffe dar=0x24 spr=0x1fff flr=0x5 stack_top=?
+  DEBUG   machine:execute_next_instruction cmp #0x0
+  DEBUG   machine:execute_next_instruction tick=213 acr=0x3 ipr=0x25 inr=0x9100000 bur=0x5 adr=0x1ffe dar=0x0 spr=0x1fff flr=0x1 stack_top=?
+  DEBUG   machine:execute_next_instruction brz *ipr+0x4
+  DEBUG   machine:execute_next_instruction tick=214 acr=0x3 ipr=0x26 inr=0xa300004 bur=0x5 adr=0x1ffe dar=0x0 spr=0x1fff flr=0x1 stack_top=?
+  DEBUG   machine:execute_next_instruction ld #0x80
+  DEBUG   machine:execute_next_instruction tick=216 acr=0x80 ipr=0x27 inr=0x2100080 bur=0x5 adr=0x1ffe dar=0x80 spr=0x1fff flr=0x1 stack_top=?
+  DEBUG   machine:execute_next_instruction call *0xd
+  DEBUG   machine:execute_next_instruction tick=220 acr=0x80 ipr=0xd inr=0x420000d bur=0x5 adr=0x1ffe dar=0x28 spr=0x1ffe flr=0x1 stack_top=0x28
+  DEBUG   machine:execute_next_instruction push
+  DEBUG   machine:execute_next_instruction tick=223 acr=0x80 ipr=0xe inr=0x6000000 bur=0x5 adr=0x1ffd dar=0x80 spr=0x1ffd flr=0x1 stack_top=0x80
+  DEBUG   machine:execute_next_instruction push
+  DEBUG   machine:execute_next_instruction tick=226 acr=0x80 ipr=0xf inr=0x6000000 bur=0x5 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x1 stack_top=0x80
+  DEBUG   machine:execute_next_instruction ld #0x0
+  DEBUG   machine:execute_next_instruction tick=228 acr=0x0 ipr=0x10 inr=0x2100000 bur=0x5 adr=0x1ffc dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x80
+  DEBUG   machine:execute_next_instruction push
+  DEBUG   machine:execute_next_instruction tick=231 acr=0x0 ipr=0x11 inr=0x6000000 bur=0x5 adr=0x1ffb dar=0x0 spr=0x1ffb flr=0x1 stack_top=0x0
+  DEBUG   machine:execute_next_instruction ld *0x15b3
+  DEBUG   machine:signal_read_data_memory input: 'd' <- 'ef\n'
+  DEBUG   machine:execute_next_instruction tick=234 acr=0x64 ipr=0x12 inr=0x22015b3 bur=0x5 adr=0x15b3 dar=0x64 spr=0x1ffb flr=0x1 stack_top=0x0
+  DEBUG   machine:execute_next_instruction cmp #0xa
+  DEBUG   machine:execute_next_instruction tick=236 acr=0x64 ipr=0x13 inr=0x910000a bur=0x5 adr=0x15b3 dar=0xa spr=0x1ffb flr=0x1 stack_top=0x0
+  DEBUG   machine:execute_next_instruction brz *ipr+0x8
+  DEBUG   machine:execute_next_instruction tick=237 acr=0x64 ipr=0x14 inr=0xa300008 bur=0x5 adr=0x15b3 dar=0xa spr=0x1ffb flr=0x1 stack_top=0x0
+  DEBUG   machine:execute_next_instruction st **spr+0x1
+  DEBUG   machine:execute_next_instruction tick=242 acr=0x64 ipr=0x15 inr=0x3500001 bur=0x5 adr=0x80 dar=0x64 spr=0x1ffb flr=0x1 stack_top=0x0
+  DEBUG   machine:execute_next_instruction inc *spr+0x1
+  DEBUG   machine:execute_next_instruction tick=246 acr=0x64 ipr=0x16 inr=0xd400001 bur=0x5 adr=0x1ffc dar=0x81 spr=0x1ffb flr=0x1 stack_top=0x0
+  DEBUG   machine:execute_next_instruction inc *spr
+  DEBUG   machine:execute_next_instruction tick=250 acr=0x64 ipr=0x17 inr=0xd400000 bur=0x5 adr=0x1ffb dar=0x1 spr=0x1ffb flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction ld *spr
+  DEBUG   machine:execute_next_instruction tick=253 acr=0x1 ipr=0x18 inr=0x2400000 bur=0x5 adr=0x1ffb dar=0x1 spr=0x1ffb flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction cmp #0x7f
+  DEBUG   machine:execute_next_instruction tick=255 acr=0x1 ipr=0x19 inr=0x910007f bur=0x5 adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x1
+  DEBUG   machine:execute_next_instruction brz *ipr+0x2
+  DEBUG   machine:execute_next_instruction tick=256 acr=0x1 ipr=0x1a inr=0xa300002 bur=0x5 adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x1
+  DEBUG   machine:execute_next_instruction br *ipr+0xffff7
+  DEBUG   machine:execute_next_instruction tick=258 acr=0x1 ipr=0x11 inr=0xc3ffff7 bur=0x1a adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x1
+  DEBUG   machine:execute_next_instruction ld *0x15b3
+  DEBUG   machine:signal_read_data_memory input: 'e' <- 'f\n'
+  DEBUG   machine:execute_next_instruction tick=261 acr=0x65 ipr=0x12 inr=0x22015b3 bur=0x1a adr=0x15b3 dar=0x65 spr=0x1ffb flr=0x8 stack_top=0x1
+  DEBUG   machine:execute_next_instruction cmp #0xa
+  DEBUG   machine:execute_next_instruction tick=263 acr=0x65 ipr=0x13 inr=0x910000a bur=0x1a adr=0x15b3 dar=0xa spr=0x1ffb flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction brz *ipr+0x8
+  DEBUG   machine:execute_next_instruction tick=264 acr=0x65 ipr=0x14 inr=0xa300008 bur=0x1a adr=0x15b3 dar=0xa spr=0x1ffb flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction st **spr+0x1
+  DEBUG   machine:execute_next_instruction tick=269 acr=0x65 ipr=0x15 inr=0x3500001 bur=0x1a adr=0x81 dar=0x65 spr=0x1ffb flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction inc *spr+0x1
+  DEBUG   machine:execute_next_instruction tick=273 acr=0x65 ipr=0x16 inr=0xd400001 bur=0x1a adr=0x1ffc dar=0x82 spr=0x1ffb flr=0x1 stack_top=0x1
+  DEBUG   machine:execute_next_instruction inc *spr
+  DEBUG   machine:execute_next_instruction tick=277 acr=0x65 ipr=0x17 inr=0xd400000 bur=0x1a adr=0x1ffb dar=0x2 spr=0x1ffb flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction ld *spr
+  DEBUG   machine:execute_next_instruction tick=280 acr=0x2 ipr=0x18 inr=0x2400000 bur=0x1a adr=0x1ffb dar=0x2 spr=0x1ffb flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction cmp #0x7f
+  DEBUG   machine:execute_next_instruction tick=282 acr=0x2 ipr=0x19 inr=0x910007f bur=0x1a adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x2
+  DEBUG   machine:execute_next_instruction brz *ipr+0x2
+  DEBUG   machine:execute_next_instruction tick=283 acr=0x2 ipr=0x1a inr=0xa300002 bur=0x1a adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x2
+  DEBUG   machine:execute_next_instruction br *ipr+0xffff7
+  DEBUG   machine:execute_next_instruction tick=285 acr=0x2 ipr=0x11 inr=0xc3ffff7 bur=0x1a adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x2
+  DEBUG   machine:execute_next_instruction ld *0x15b3
+  DEBUG   machine:signal_read_data_memory input: 'f' <- '\n'
+  DEBUG   machine:execute_next_instruction tick=288 acr=0x66 ipr=0x12 inr=0x22015b3 bur=0x1a adr=0x15b3 dar=0x66 spr=0x1ffb flr=0x8 stack_top=0x2
+  DEBUG   machine:execute_next_instruction cmp #0xa
+  DEBUG   machine:execute_next_instruction tick=290 acr=0x66 ipr=0x13 inr=0x910000a bur=0x1a adr=0x15b3 dar=0xa spr=0x1ffb flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction brz *ipr+0x8
+  DEBUG   machine:execute_next_instruction tick=291 acr=0x66 ipr=0x14 inr=0xa300008 bur=0x1a adr=0x15b3 dar=0xa spr=0x1ffb flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction st **spr+0x1
+  DEBUG   machine:execute_next_instruction tick=296 acr=0x66 ipr=0x15 inr=0x3500001 bur=0x1a adr=0x82 dar=0x66 spr=0x1ffb flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction inc *spr+0x1
+  DEBUG   machine:execute_next_instruction tick=300 acr=0x66 ipr=0x16 inr=0xd400001 bur=0x1a adr=0x1ffc dar=0x83 spr=0x1ffb flr=0x1 stack_top=0x2
+  DEBUG   machine:execute_next_instruction inc *spr
+  DEBUG   machine:execute_next_instruction tick=304 acr=0x66 ipr=0x17 inr=0xd400000 bur=0x1a adr=0x1ffb dar=0x3 spr=0x1ffb flr=0x1 stack_top=0x3
+  DEBUG   machine:execute_next_instruction ld *spr
+  DEBUG   machine:execute_next_instruction tick=307 acr=0x3 ipr=0x18 inr=0x2400000 bur=0x1a adr=0x1ffb dar=0x3 spr=0x1ffb flr=0x1 stack_top=0x3
+  DEBUG   machine:execute_next_instruction cmp #0x7f
+  DEBUG   machine:execute_next_instruction tick=309 acr=0x3 ipr=0x19 inr=0x910007f bur=0x1a adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x3
+  DEBUG   machine:execute_next_instruction brz *ipr+0x2
+  DEBUG   machine:execute_next_instruction tick=310 acr=0x3 ipr=0x1a inr=0xa300002 bur=0x1a adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x3
+  DEBUG   machine:execute_next_instruction br *ipr+0xffff7
+  DEBUG   machine:execute_next_instruction tick=312 acr=0x3 ipr=0x11 inr=0xc3ffff7 bur=0x1a adr=0x1ffb dar=0x7f spr=0x1ffb flr=0x8 stack_top=0x3
+  DEBUG   machine:execute_next_instruction ld *0x15b3
+  DEBUG   machine:signal_read_data_memory input: '\n' <- ''
+  DEBUG   machine:execute_next_instruction tick=315 acr=0xa ipr=0x12 inr=0x22015b3 bur=0x1a adr=0x15b3 dar=0xa spr=0x1ffb flr=0x8 stack_top=0x3
+  DEBUG   machine:execute_next_instruction cmp #0xa
+  DEBUG   machine:execute_next_instruction tick=317 acr=0xa ipr=0x13 inr=0x910000a bur=0x1a adr=0x15b3 dar=0xa spr=0x1ffb flr=0x5 stack_top=0x3
+  DEBUG   machine:execute_next_instruction brz *ipr+0x8
+  DEBUG   machine:execute_next_instruction tick=319 acr=0xa ipr=0x1b inr=0xa300008 bur=0x13 adr=0x15b3 dar=0xa spr=0x1ffb flr=0x5 stack_top=0x3
+  DEBUG   machine:execute_next_instruction ld #0x0
+  DEBUG   machine:execute_next_instruction tick=321 acr=0x0 ipr=0x1c inr=0x2100000 bur=0x13 adr=0x15b3 dar=0x0 spr=0x1ffb flr=0x5 stack_top=0x3
+  DEBUG   machine:execute_next_instruction st **spr+0x1
+  DEBUG   machine:execute_next_instruction tick=326 acr=0x0 ipr=0x1d inr=0x3500001 bur=0x13 adr=0x83 dar=0x0 spr=0x1ffb flr=0x5 stack_top=0x3
+  DEBUG   machine:execute_next_instruction pop
+  DEBUG   machine:execute_next_instruction tick=330 acr=0x3 ipr=0x1e inr=0x7000000 bur=0x13 adr=0x1ffb dar=0x3 spr=0x1ffc flr=0x5 stack_top=0x83
+  DEBUG   machine:execute_next_instruction pop
+  DEBUG   machine:execute_next_instruction tick=334 acr=0x83 ipr=0x1f inr=0x7000000 bur=0x13 adr=0x1ffc dar=0x83 spr=0x1ffd flr=0x5 stack_top=0x80
+  DEBUG   machine:execute_next_instruction pop
+  DEBUG   machine:execute_next_instruction tick=338 acr=0x80 ipr=0x20 inr=0x7000000 bur=0x13 adr=0x1ffd dar=0x80 spr=0x1ffe flr=0x5 stack_top=0x28
+  DEBUG   machine:execute_next_instruction ret
+  DEBUG   machine:execute_next_instruction tick=342 acr=0x80 ipr=0x28 inr=0x5000000 bur=0x13 adr=0x1ffe dar=0x28 spr=0x1fff flr=0x5 stack_top=?
+  DEBUG   machine:execute_next_instruction br *ipr+0x3
+  DEBUG   machine:execute_next_instruction tick=344 acr=0x80 ipr=0x2b inr=0xc300003 bur=0x28 adr=0x1ffe dar=0x28 spr=0x1fff flr=0x5 stack_top=?
+  DEBUG   machine:execute_next_instruction call *0x1
+  DEBUG   machine:execute_next_instruction tick=348 acr=0x80 ipr=0x1 inr=0x4200001 bur=0x28 adr=0x1ffe dar=0x2c spr=0x1ffe flr=0x5 stack_top=0x2c
+  DEBUG   machine:execute_next_instruction push
+  DEBUG   machine:execute_next_instruction tick=351 acr=0x80 ipr=0x2 inr=0x6000000 bur=0x28 adr=0x1ffd dar=0x80 spr=0x1ffd flr=0x5 stack_top=0x80
+  DEBUG   machine:execute_next_instruction push
+  DEBUG   machine:execute_next_instruction tick=354 acr=0x80 ipr=0x3 inr=0x6000000 bur=0x28 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x5 stack_top=0x80
+  DEBUG   machine:execute_next_instruction ld **spr
+  DEBUG   machine:execute_next_instruction tick=359 acr=0x64 ipr=0x4 inr=0x2500000 bur=0x28 adr=0x80 dar=0x64 spr=0x1ffc flr=0x5 stack_top=0x80
+  DEBUG   machine:execute_next_instruction cmp #0x0
+  DEBUG   machine:execute_next_instruction tick=361 acr=0x64 ipr=0x5 inr=0x9100000 bur=0x28 adr=0x80 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x80
+  DEBUG   machine:execute_next_instruction brz *ipr+0x4
+  DEBUG   machine:execute_next_instruction tick=362 acr=0x64 ipr=0x6 inr=0xa300004 bur=0x28 adr=0x80 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x80
+  DEBUG   machine:execute_next_instruction st *0x15b4
+  DEBUG   machine:signal_write_data_memory output: 'abc' <- 'd'
+  DEBUG   machine:execute_next_instruction tick=365 acr=0x64 ipr=0x7 inr=0x32015b4 bur=0x28 adr=0x15b4 dar=0x64 spr=0x1ffc flr=0x1 stack_top=0x80
+  DEBUG   machine:execute_next_instruction inc *spr
+  DEBUG   machine:execute_next_instruction tick=369 acr=0x64 ipr=0x8 inr=0xd400000 bur=0x28 adr=0x1ffc dar=0x81 spr=0x1ffc flr=0x1 stack_top=0x81
+  DEBUG   machine:execute_next_instruction br *ipr+0xffffb
+  DEBUG   machine:execute_next_instruction tick=371 acr=0x64 ipr=0x3 inr=0xc3ffffb bur=0x8 adr=0x1ffc dar=0x81 spr=0x1ffc flr=0x1 stack_top=0x81
+  DEBUG   machine:execute_next_instruction ld **spr
+  DEBUG   machine:execute_next_instruction tick=376 acr=0x65 ipr=0x4 inr=0x2500000 bur=0x8 adr=0x81 dar=0x65 spr=0x1ffc flr=0x1 stack_top=0x81
+  DEBUG   machine:execute_next_instruction cmp #0x0
+  DEBUG   machine:execute_next_instruction tick=378 acr=0x65 ipr=0x5 inr=0x9100000 bur=0x8 adr=0x81 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x81
+  DEBUG   machine:execute_next_instruction brz *ipr+0x4
+  DEBUG   machine:execute_next_instruction tick=379 acr=0x65 ipr=0x6 inr=0xa300004 bur=0x8 adr=0x81 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x81
+  DEBUG   machine:execute_next_instruction st *0x15b4
+  DEBUG   machine:signal_write_data_memory output: 'abcd' <- 'e'
+  DEBUG   machine:execute_next_instruction tick=382 acr=0x65 ipr=0x7 inr=0x32015b4 bur=0x8 adr=0x15b4 dar=0x65 spr=0x1ffc flr=0x1 stack_top=0x81
+  DEBUG   machine:execute_next_instruction inc *spr
+  DEBUG   machine:execute_next_instruction tick=386 acr=0x65 ipr=0x8 inr=0xd400000 bur=0x8 adr=0x1ffc dar=0x82 spr=0x1ffc flr=0x1 stack_top=0x82
+  DEBUG   machine:execute_next_instruction br *ipr+0xffffb
+  DEBUG   machine:execute_next_instruction tick=388 acr=0x65 ipr=0x3 inr=0xc3ffffb bur=0x8 adr=0x1ffc dar=0x82 spr=0x1ffc flr=0x1 stack_top=0x82
+  DEBUG   machine:execute_next_instruction ld **spr
+  DEBUG   machine:execute_next_instruction tick=393 acr=0x66 ipr=0x4 inr=0x2500000 bur=0x8 adr=0x82 dar=0x66 spr=0x1ffc flr=0x1 stack_top=0x82
+  DEBUG   machine:execute_next_instruction cmp #0x0
+  DEBUG   machine:execute_next_instruction tick=395 acr=0x66 ipr=0x5 inr=0x9100000 bur=0x8 adr=0x82 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x82
+  DEBUG   machine:execute_next_instruction brz *ipr+0x4
+  DEBUG   machine:execute_next_instruction tick=396 acr=0x66 ipr=0x6 inr=0xa300004 bur=0x8 adr=0x82 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x82
+  DEBUG   machine:execute_next_instruction st *0x15b4
+  DEBUG   machine:signal_write_data_memory output: 'abcde' <- 'f'
+  DEBUG   machine:execute_next_instruction tick=399 acr=0x66 ipr=0x7 inr=0x32015b4 bur=0x8 adr=0x15b4 dar=0x66 spr=0x1ffc flr=0x1 stack_top=0x82
+  DEBUG   machine:execute_next_instruction inc *spr
+  DEBUG   machine:execute_next_instruction tick=403 acr=0x66 ipr=0x8 inr=0xd400000 bur=0x8 adr=0x1ffc dar=0x83 spr=0x1ffc flr=0x1 stack_top=0x83
+  DEBUG   machine:execute_next_instruction br *ipr+0xffffb
+  DEBUG   machine:execute_next_instruction tick=405 acr=0x66 ipr=0x3 inr=0xc3ffffb bur=0x8 adr=0x1ffc dar=0x83 spr=0x1ffc flr=0x1 stack_top=0x83
+  DEBUG   machine:execute_next_instruction ld **spr
+  DEBUG   machine:execute_next_instruction tick=410 acr=0x0 ipr=0x4 inr=0x2500000 bur=0x8 adr=0x83 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x83
+  DEBUG   machine:execute_next_instruction cmp #0x0
+  DEBUG   machine:execute_next_instruction tick=412 acr=0x0 ipr=0x5 inr=0x9100000 bur=0x8 adr=0x83 dar=0x0 spr=0x1ffc flr=0x5 stack_top=0x83
+  DEBUG   machine:execute_next_instruction brz *ipr+0x4
+  DEBUG   machine:execute_next_instruction tick=414 acr=0x0 ipr=0x9 inr=0xa300004 bur=0x5 adr=0x83 dar=0x0 spr=0x1ffc flr=0x5 stack_top=0x83
+  DEBUG   machine:execute_next_instruction pop
+  DEBUG   machine:execute_next_instruction tick=418 acr=0x83 ipr=0xa inr=0x7000000 bur=0x5 adr=0x1ffc dar=0x83 spr=0x1ffd flr=0x5 stack_top=0x80
+  DEBUG   machine:execute_next_instruction sub *spr
+  DEBUG   machine:execute_next_instruction tick=421 acr=0x3 ipr=0xb inr=0x11400000 bur=0x5 adr=0x1ffd dar=0x80 spr=0x1ffd flr=0x5 stack_top=0x80
+  DEBUG   machine:execute_next_instruction popn
+  DEBUG   machine:execute_next_instruction tick=422 acr=0x3 ipr=0xc inr=0x8000000 bur=0x5 adr=0x1ffd dar=0x80 spr=0x1ffe flr=0x5 stack_top=0x2c
+  DEBUG   machine:execute_next_instruction ret
+  DEBUG   machine:execute_next_instruction tick=426 acr=0x3 ipr=0x2c inr=0x5000000 bur=0x5 adr=0x1ffe dar=0x2c spr=0x1fff flr=0x5 stack_top=?
+  DEBUG   machine:execute_next_instruction halt

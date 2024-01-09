@@ -54,93 +54,7 @@ class FuncInfo:
         self.code = [] if code is None else code
 
 
-predefined_funcs: dict[str, FuncInfo] = {
-    "prints": FuncInfo(
-        "prints",
-        [Type.STR_TYPE],
-        Type.INT_TYPE,
-        [
-            Term(Opcode.PUSH),
-            Term(Opcode.PUSH),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_INDIRECT_SPR, 0)),
-            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 4)),
-            Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
-            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -5)),
-            Term(Opcode.POP),
-            Term(Opcode.SUBTRACT, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.POPN),
-            Term(Opcode.RETURN),
-        ],
-    ),
-    "printi": FuncInfo(
-        "printi",
-        [Type.INT_TYPE],
-        Type.INT_TYPE,
-        [
-            Term(Opcode.PUSH),
-            Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
-            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 2)),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-            Term(Opcode.BRANCH_GREATER_EQUALS, Address(AddressType.RELATIVE_IPR, 5)),
-            Term(Opcode.LOAD, Address(AddressType.EXACT, ord("-"))),
-            Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.INVERSE),
-            Term(Opcode.PUSH),
-            Term(Opcode.MODULO, Address(AddressType.EXACT, 10)),
-            Term(Opcode.ADD, Address(AddressType.EXACT, ord("0"))),
-            Term(Opcode.DECREMENT, Address(AddressType.RELATIVE_SPR, 3)),
-            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 3)),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.DIVIDE, Address(AddressType.EXACT, 10)),
-            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 3)),
-            Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
-            Term(Opcode.POP),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 2)),
-            Term(Opcode.CALL, "prints"),
-            Term(Opcode.PUSH),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 1)),
-            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-            Term(Opcode.BRANCH_GREATER_EQUALS, Address(AddressType.RELATIVE_IPR, 2)),
-            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.POP),
-            Term(Opcode.POPN),
-            Term(Opcode.RETURN),
-        ],
-    ),
-    "read": FuncInfo(
-        "read",
-        [],
-        Type.STR_TYPE,
-        [
-            Term(Opcode.PUSH),
-            Term(Opcode.PUSH),
-            Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
-            Term(Opcode.PUSH),
-            Term(Opcode.LOAD, Address(AddressType.ABSOLUTE, 5555)),
-            Term(Opcode.COMPARE, Address(AddressType.EXACT, ord("\n"))),
-            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 8)),
-            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
-            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 1)),
-            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.COMPARE, Address(AddressType.EXACT, 127)),
-            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 2)),
-            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
-            Term(Opcode.LOAD, Address(AddressType.EXACT, ord("\0"))),
-            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
-            Term(Opcode.POP),
-            Term(Opcode.POP),
-            Term(Opcode.POP),
-            Term(Opcode.RETURN),
-        ],
-    ),
-}
+predefined_funcs: dict[str, FuncInfo]
 
 
 class FuncVars:
@@ -229,7 +143,99 @@ class GlobalContext:
         return self.func_context
 
 
-global_context = GlobalContext()
+global_context: GlobalContext
+
+
+def init_base_funcs():
+    global predefined_funcs, global_context
+    global_context = GlobalContext()
+    predefined_funcs = {
+        "prints": FuncInfo(
+            "prints",
+            [Type.STR_TYPE],
+            Type.INT_TYPE,
+            [
+                Term(Opcode.PUSH),
+                Term(Opcode.PUSH),
+                Term(Opcode.LOAD, Address(AddressType.RELATIVE_INDIRECT_SPR, 0)),
+                Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
+                Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 4)),
+                Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
+                Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
+                Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -5)),
+                Term(Opcode.POP),
+                Term(Opcode.SUBTRACT, Address(AddressType.RELATIVE_SPR, 0)),
+                Term(Opcode.POPN),
+                Term(Opcode.RETURN),
+            ],
+        ),
+        "printi": FuncInfo(
+            "printi",
+            [Type.INT_TYPE],
+            Type.INT_TYPE,
+            [
+                Term(Opcode.PUSH),
+                Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
+                Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 2)),
+                Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
+                Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
+                Term(Opcode.BRANCH_GREATER_EQUALS, Address(AddressType.RELATIVE_IPR, 5)),
+                Term(Opcode.LOAD, Address(AddressType.EXACT, ord("-"))),
+                Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
+                Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
+                Term(Opcode.INVERSE),
+                Term(Opcode.PUSH),
+                Term(Opcode.MODULO, Address(AddressType.EXACT, 10)),
+                Term(Opcode.ADD, Address(AddressType.EXACT, ord("0"))),
+                Term(Opcode.DECREMENT, Address(AddressType.RELATIVE_SPR, 3)),
+                Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 3)),
+                Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
+                Term(Opcode.DIVIDE, Address(AddressType.EXACT, 10)),
+                Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
+                Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 3)),
+                Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 0)),
+                Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
+                Term(Opcode.POP),
+                Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 2)),
+                Term(Opcode.CALL, "prints"),
+                Term(Opcode.PUSH),
+                Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 1)),
+                Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
+                Term(Opcode.BRANCH_GREATER_EQUALS, Address(AddressType.RELATIVE_IPR, 2)),
+                Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
+                Term(Opcode.POP),
+                Term(Opcode.POPN),
+                Term(Opcode.RETURN),
+            ],
+        ),
+        "read": FuncInfo(
+            "read",
+            [],
+            Type.STR_TYPE,
+            [
+                Term(Opcode.PUSH),
+                Term(Opcode.PUSH),
+                Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
+                Term(Opcode.PUSH),
+                Term(Opcode.LOAD, Address(AddressType.ABSOLUTE, 5555)),
+                Term(Opcode.COMPARE, Address(AddressType.EXACT, ord("\n"))),
+                Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 8)),
+                Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
+                Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 1)),
+                Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
+                Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
+                Term(Opcode.COMPARE, Address(AddressType.EXACT, 127)),
+                Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 2)),
+                Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
+                Term(Opcode.LOAD, Address(AddressType.EXACT, ord("\0"))),
+                Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
+                Term(Opcode.POP),
+                Term(Opcode.POP),
+                Term(Opcode.POP),
+                Term(Opcode.RETURN),
+            ],
+        ),
+    }
 
 
 class Statement:
@@ -417,6 +423,7 @@ def ast_to_statement(node: ASTNode) -> Statement:
 
 
 def extract_statements(root: ASTNode) -> list[Statement]:
+    init_base_funcs()
     statements = []
     for node in root.children:
         statements.append(ast_to_statement(node))
@@ -634,7 +641,7 @@ class Code:
         self.init_symbols()
 
     def init_global_context(self, context: GlobalContext):
-        for symbol in context.const_table:
+        for symbol in sorted(context.const_table, key=str):
             data: list
             if isinstance(symbol, int):
                 data = [symbol]
@@ -647,12 +654,12 @@ class Code:
             self.data_memory.append((self.data_pointer, len(data), str(symbol), data))
             self.data_pointer += len(data)
 
-        for symbol in context.var_table:
+        for symbol in sorted(context.var_table):
             self.var_table[symbol] = self.data_pointer
             self.symbols.add(symbol)
             self.data_pointer += 1
 
-        for symbol in context.anon_var_table:
+        for symbol in sorted(context.anon_var_table):
             offset, _ = context.anon_var_table[symbol]
             self.const_table[symbol] = self.data_pointer + offset
             self.symbols.add(symbol)
@@ -703,23 +710,13 @@ def translate_into_code(statements: list[Statement]) -> Code:
 
 
 def translate(src: str) -> Code:
-    logging.debug("Extracting tokens from text")
     tokens = extract_tokens(src)
-    logging.debug(f"Extracted {len(tokens)} tokens")
 
-    logging.debug("Building ast from tokens")
     ast = build_ast(tokens)
-    logging.debug("Built ast")
 
-    logging.debug("Translating ast to statements")
     statements = extract_statements(ast)
-    logging.debug(f"Translated ast to {len(statements)} statements")
 
-    logging.debug("Translating statements into code")
-    code = translate_into_code(statements)
-    logging.debug(f"Translated to {len(code)} instructions")
-
-    return code
+    return translate_into_code(statements)
 
 
 def int_to_bytes(i: int, size: int) -> bytearray:
@@ -826,40 +823,29 @@ def code_to_text(code: Code) -> list[str]:
     return lines
 
 
-def write_code(dst, code: Code):
-    logging.debug("Serialize code into bytes")
+def write_code(dst: str, code: Code):
     binary = code_to_binary(code)
-    logging.debug(f"Serialized into {len(binary)} bytes")
 
-    logging.debug(f"Start writing into {dst}")
     with open(dst, "wb") as f:
         f.write(binary)
-    logging.debug("Successfully wrote binary data")
 
-    logging.debug("Serialize code with debugging info")
     text = code_to_text(code)
-    logging.debug(f"Serialized into {len(text)} lines")
 
-    logging.debug(f"Start writing into {dst}.debug")
     with open(dst + ".debug", "w") as f:
         f.writelines(text)
-    logging.debug("Successfully wrote debug data")
+
+    return binary
 
 
 def main(src: str, dst: str):
-    logging.debug(f"Start reading from {src}")
     with open(src, encoding="utf-8") as f:
         src = f.read()
-    preview = ('"' + src[:20] + '..."').replace("\n", "")
-    logging.debug(f"Read {preview} from file")
 
-    logging.debug("Start translating text into code")
     code = translate(src)
-    logging.debug("Successfully translated into code")
 
-    logging.debug(f"Start writing to {dst}")
-    write_code(dst, code)
-    logging.debug(f"Successfully wrote {len(code)} code instructions to {dst}")
+    binary = write_code(dst, code)
+
+    print("LoC:", len(src.split("\n")), "code byte:", len(binary), "code instr:", len(code))
 
 
 if __name__ == "__main__":
