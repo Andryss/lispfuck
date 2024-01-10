@@ -682,8 +682,11 @@ Hello, world!
 instr:  90 ticks:  255
 ```
 
-| ФИО                            | <алг> | <LoC> | <code байт> | <code инстр.> | <инстр.> | <такт.> | <вариант>                                                            |
-|--------------------------------|-------|-------|-------------|---------------|----------|---------|----------------------------------------------------------------------|
-| Кривошеев Андрей Александрович | hello | 2     | 186         | 16            | 90       | 255     | `lisp, acc, harv, hw, instr, binary, stream, mem, cstr, prob5, 8bit` |
-| Кривошеев Андрей Александрович | echo  | 2     | 158         | 37            | 106      | 299     | `lisp, acc, harv, hw, instr, binary, stream, mem, cstr, prob5, 8bit` |
-| Кривошеев Андрей Александрович | prob5 | 16    | 670         | 125           | 2666     | 6980    | `lisp, acc, harv, hw, instr, binary, stream, mem, cstr, prob5, 8bit` |
+Для статистики:
+
+```text
+| ФИО                            | алг   | LoC | code байт | code инстр. | инстр. | такт. | вариант                                                                        |
+| Кривошеев Андрей Александрович | hello | 2   | 186       | 16          | 90     | 255   | `lisp | acc | harv | hw | instr | binary | stream | mem | cstr | prob5 | 8bit` |
+| Кривошеев Андрей Александрович | echo  | 2   | 158       | 37          | 106    | 299   | `lisp | acc | harv | hw | instr | binary | stream | mem | cstr | prob5 | 8bit` |
+| Кривошеев Андрей Александрович | prob5 | 16  | 670       | 125         | 2666   | 6980  | `lisp | acc | harv | hw | instr | binary | stream | mem | cstr | prob5 | 8bit` |
+```
