@@ -682,6 +682,32 @@ Hello, world!
 instr:  90 ticks:  255
 ```
 
+Пример проверки исходного кода:
+
+```bash
+% poetry run pytest . -v
+============================================================================================= test session starts ==============================================================================================
+platform darwin -- Python 3.12.0, pytest-7.4.3, pluggy-1.3.0 -- /Users/andryssssss/Library/Caches/pypoetry/virtualenvs/lispfuck-qe1KGZJD-py3.12/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/andryssssss/Programming/Projects/Python/ITMO/ComputerArchitectureLab3
+configfile: pyproject.toml
+plugins: golden-0.2.2
+collected 7 items                                                                                                                                                                                              
+
+integration_test.py::test_translator_and_machine[golden/func.yml] PASSED                                                                                                                                 [ 14%]
+integration_test.py::test_translator_and_machine[golden/if.yml] PASSED                                                                                                                                   [ 28%]
+integration_test.py::test_translator_and_machine[golden/math.yml] PASSED                                                                                                                                 [ 42%]
+integration_test.py::test_translator_and_machine[golden/hello.yml] PASSED                                                                                                                                [ 57%]
+integration_test.py::test_translator_and_machine[golden/prob5.yml] PASSED                                                                                                                                [ 71%]
+integration_test.py::test_translator_and_machine[golden/hello_user_name.yml] PASSED                                                                                                                      [ 85%]
+integration_test.py::test_translator_and_machine[golden/echo.yml] PASSED                                                                                                                                 [100%]
+
+============================================================================================== 7 passed in 0.61s ===============================================================================================
+% poetry run ruff check .
+% poetry run ruff format .
+5 files left unchanged
+```
+
 Для статистики:
 
 ```text
