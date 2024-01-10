@@ -158,7 +158,7 @@ class DataPath:
         else:
             self.data_memory[self.adr] = self.dar
 
-    def signal_set_inr(self, instr: Term):
+    def set_inr(self, instr: Term):
         self.inr = bytes_to_int(translator.term_to_binary(instr))
 
     def get_ipr(self):
@@ -464,7 +464,7 @@ class ControlUnit:
     def execute_next_instruction(self):
         instruction = self.program[self.data_path.get_ipr()]
         logging.debug(instruction)
-        self.data_path.signal_set_inr(instruction)
+        self.data_path.set_inr(instruction)
         if not self.execute_control_instruction(instruction):
             self.execute_ordinary_instruction(instruction)
         logging.debug(self)

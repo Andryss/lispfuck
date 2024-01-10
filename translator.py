@@ -566,8 +566,9 @@ def translate_defun_statement(defun: InvokeStatement) -> list[Term]:
     func_name = defun.args[0].symbol
     arguments = defun.args[1].args
     func_context = FuncContext()
-    first_argument = arguments[0]
-    func_context.args_table[first_argument.symbol] = -1
+    if len(arguments) > 0:
+        first_argument = arguments[0]
+        func_context.args_table[first_argument.symbol] = -1
     for i, argument in enumerate(arguments[1:]):
         func_context.args_table[argument.symbol] = 1 + i
     global_context.set_func_context(func_context)
