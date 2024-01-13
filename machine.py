@@ -73,7 +73,7 @@ def read_code(src: str) -> Code:
 
 class Reg(Enum):
     ACR, IPR, INR = "acr", "ipr", "inr"
-    BUR, ADR, DAR, SPR = "bur", "adr", "dar", "spr"
+    ADR, DAR, SPR = "adr", "dar", "spr"
 
 
 class AluOp(Enum):
@@ -135,7 +135,7 @@ class DataPath:
         self.output_tokens = []
         # registers
         self.acr, self.ipr, self.inr = 0, 0, 0
-        self.bur, self.adr, self.dar, self.spr = 0, 0, 0, data_memory_size
+        self.adr, self.dar, self.spr = 0, 0, data_memory_size
         self.flr = 0
 
     def signal_read_data_memory(self):
@@ -185,7 +185,7 @@ class DataPath:
     def right_alu_val(self, right: Reg | None) -> int:
         if right is None:
             return 0
-        assert right in (Reg.BUR, Reg.ADR, Reg.DAR, Reg.SPR), f"incorrect right register, got {right}"
+        assert right in (Reg.ADR, Reg.DAR, Reg.SPR), f"incorrect right register, got {right}"
         return getattr(self, right.value)
 
     def alu(self, left: int, right: int, op: AluOp, opts: int) -> int:
@@ -218,7 +218,7 @@ class DataPath:
 
     def set_regs(self, alu_out: int, regs: list[Reg]):
         for reg in regs:
-            assert reg in (Reg.ACR, Reg.IPR, Reg.INR, Reg.BUR, Reg.ADR, Reg.DAR, Reg.SPR), f"unsupported register {reg}"
+            assert reg in (Reg.ACR, Reg.IPR, Reg.INR, Reg.ADR, Reg.DAR, Reg.SPR), f"unsupported register {reg}"
             setattr(self, reg.value, alu_out)
 
     def signal_alu(
@@ -239,7 +239,7 @@ class DataPath:
     def __repr__(self):
         regs_repr = (
             f"acr={hex(self.acr)} ipr={hex(self.ipr)} inr={hex(self.inr)} "
-            f"bur={hex(self.bur)} adr={hex(self.adr)} dar={hex(self.dar)} spr={hex(self.spr)} "
+            f"adr={hex(self.adr)} dar={hex(self.dar)} spr={hex(self.spr)} "
             f"flr={hex(self.flr)}"
         )
         stack_repr = f"stack_top={'?' if self.spr >= len(self.data_memory) else hex(self.data_memory[self.spr])}"
@@ -281,9 +281,9 @@ class ControlUnit:
         if instr.op == Opcode.BRANCH_ZERO:
             assert instr.arg.kind == AddressType.RELATIVE_IPR, f"unsupported addressing for brz, got {instr}"
             if self.data_path.zero():
-                self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.BUR])
+                self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.ADR])
                 self.tick()
-                self.data_path.signal_alu(left=Reg.INR, right=Reg.BUR, set_regs=[Reg.IPR], opts=extend_20)
+                self.data_path.signal_alu(left=Reg.INR, right=Reg.ADR, set_regs=[Reg.IPR], opts=extend_20)
                 self.tick()
             else:
                 self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.IPR], opts=plus_1)
@@ -292,9 +292,9 @@ class ControlUnit:
         if instr.op == Opcode.BRANCH_GREATER_EQUALS:
             assert instr.arg.kind == AddressType.RELATIVE_IPR, f"unsupported addressing for brge, got {instr}"
             if self.data_path.negative() == self.data_path.overflow():
-                self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.BUR])
+                self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.ADR])
                 self.tick()
-                self.data_path.signal_alu(left=Reg.INR, right=Reg.BUR, set_regs=[Reg.IPR], opts=extend_20)
+                self.data_path.signal_alu(left=Reg.INR, right=Reg.ADR, set_regs=[Reg.IPR], opts=extend_20)
                 self.tick()
             else:
                 self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.IPR], opts=plus_1)
@@ -309,9 +309,9 @@ class ControlUnit:
             self.data_path.signal_alu(left=Reg.INR, set_regs=[Reg.IPR], opts=extend_20)
             self.tick()
         else:
-            self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.BUR])
+            self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.ADR])
             self.tick()
-            self.data_path.signal_alu(left=Reg.INR, right=Reg.BUR, set_regs=[Reg.IPR], opts=extend_20)
+            self.data_path.signal_alu(left=Reg.INR, right=Reg.ADR, set_regs=[Reg.IPR], opts=extend_20)
             self.tick()
 
     def execute_control_instruction(self, instr: Term) -> bool:
