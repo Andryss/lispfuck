@@ -88,7 +88,6 @@ plus_1 = 0x02
 set_flags = 0x04
 inv_left = 0x08
 inv_right = 0x10
-inv_out = 0x20
 
 
 def extend_bits(val: int, count: int) -> int:
@@ -212,8 +211,6 @@ class DataPath:
         else:
             raise NotImplementedError(op)
 
-        output = ~output if opts & inv_out != 0 else output
-
         return output & mask_64
 
     def set_regs(self, alu_out: int, regs: list[Reg]):
@@ -258,7 +255,7 @@ class ControlUnit:
     def execute_call_control_instruction(self, instr: Term):
         if instr.op == Opcode.CALL:
             assert instr.arg.kind == AddressType.ABSOLUTE, f"unsupported addressing for call, got {instr}"
-            self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.ADR, Reg.SPR], opts=inv_right | inv_out | plus_1)
+            self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.ADR, Reg.SPR], opts=inv_left)
             self.tick()
             self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.DAR], opts=plus_1)
             self.tick()
@@ -370,7 +367,7 @@ class ControlUnit:
 
     def execute_push_pop(self, instr: Term):
         if instr.op == Opcode.PUSH:
-            self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.ADR, Reg.SPR], opts=inv_right | inv_out | plus_1)
+            self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.ADR, Reg.SPR], opts=inv_left)
             self.tick()
             self.data_path.signal_alu(left=Reg.ACR, set_regs=[Reg.DAR])
             self.tick()
