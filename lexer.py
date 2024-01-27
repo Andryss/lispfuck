@@ -12,7 +12,6 @@ SPECIAL = "SPECIAL"
 MATH = "MATH"
 BOOL = "BOOL"
 DEFUNC = "DEFUNC"
-ARG = "ARG"
 
 token_expressions = [
     (r"[ \n\t]+", None),
@@ -33,7 +32,6 @@ token_expressions = [
     (r"/", MATH),
     (r"mod", MATH),
     (r"defun", DEFUNC),
-    (r"[A-Za-z][A-Za-z_]*:[is]", ARG),
     (r"\"(.*?)\"", STR),
     (r"[A-Za-z][A-Za-z_]*", ID),
 ]

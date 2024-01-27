@@ -40,17 +40,10 @@ def build_ast(tokens: list[lexer.TokenInfo]) -> ASTNode:
     return root
 
 
-class Type(Enum):
-    INT_TYPE = "INT"
-    STR_TYPE = "STRING"
-    UNK_TYPE = "UNKNOWN"
-
-
 class FuncInfo:
-    def __init__(self, name: str, args: list[Type] = (), ret: Type = Type.UNK_TYPE, code: list[Term] | None = None):
+    def __init__(self, name: str, argc: int = 0, code: list[Term] | None = None):
         self.name = name
-        self.args = args
-        self.ret = ret
+        self.argc = argc
         self.code = [] if code is None else code
 
 
@@ -59,16 +52,13 @@ predefined_funcs: dict[str, FuncInfo]
 
 class FuncVars:
     def __init__(self):
-        self.args: dict[str, Type] = {}
+        self.args: set[str] = set()
 
-    def add_var(self, name: str, t: Type):
-        self.args[name] = t
+    def add_var(self, name: str):
+        self.args.add(name)
 
     def has_var(self, name: str) -> bool:
         return name in self.args
-
-    def var_type(self, name: str) -> Type:
-        return self.args[name]
 
 
 class FuncContext:
@@ -92,7 +82,7 @@ class GlobalContext:
     def __init__(self):
         self.function_table: dict[str, FuncInfo] = {}
         self.const_table: set[str | int] = set()
-        self.var_table: dict[str, Type] = {}
+        self.var_table: set[str] = set()
         self.anon_var_table: dict[str, tuple[int, int]] = {}
         self.anon_var_pointer = 0
         self.anon_var_counter = 0
@@ -122,16 +112,8 @@ class GlobalContext:
         self.anon_var_pointer += size
         return name
 
-    def require_variable(self, name: str, t: Type):
-        assert t != Type.UNK_TYPE, f"unexpected variable type, got {t}"
-        self.var_table[name] = t
-
-    def variable_type(self, name: str) -> Type:
-        if self.func_vars and self.func_vars.has_var(name):
-            return self.func_vars.var_type(name)
-        if name in self.var_table:
-            return self.var_table[name]
-        return Type.UNK_TYPE
+    def require_variable(self, name: str):
+        self.var_table.add(name)
 
     def set_func_vars(self, fv: FuncVars | None):
         self.func_vars = fv
@@ -152,8 +134,7 @@ def init_base_funcs():
     predefined_funcs = {
         "prints": FuncInfo(
             "prints",
-            [Type.STR_TYPE],
-            Type.INT_TYPE,
+            1,
             [
                 Term(Opcode.PUSH),
                 Term(Opcode.PUSH),
@@ -171,8 +152,7 @@ def init_base_funcs():
         ),
         "printi": FuncInfo(
             "printi",
-            [Type.INT_TYPE],
-            Type.INT_TYPE,
+            1,
             [
                 Term(Opcode.PUSH),
                 Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
@@ -210,8 +190,7 @@ def init_base_funcs():
         ),
         "read": FuncInfo(
             "read",
-            [],
-            Type.STR_TYPE,
+            0,
             [
                 Term(Opcode.PUSH),
                 Term(Opcode.PUSH),
@@ -238,54 +217,36 @@ def init_base_funcs():
     }
 
 
+class Tag(Enum):
+    INVOKE = "INVOKE"
+    INT_CONST = "INT_CONST"
+    STR_CONST = "STR_CONST"
+    VALUE = "VALUE"
+    REFERENCE = "REFERENCE"
+
+
 class Statement:
-    def __init__(self, ret_type: Type = Type.UNK_TYPE):
-        self.ret_type = ret_type
-
-
-class InvokeStatement(Statement):
-    def __init__(self, ret_type: Type = Type.UNK_TYPE, name: str | None = None, args: list[Statement] | None = None):
-        super().__init__(ret_type)
+    def __init__(self, tag: Tag, name: str | None = None, args: list[Statement] | None = None, val: int | None = None):
+        self.tag = tag
         self.name = name
         self.args = [] if args is None else args
-
-
-class ConstStatement(Statement):
-    def __init__(self, ret_type: Type = Type.UNK_TYPE, val: str | int | None = None):
-        super().__init__(ret_type)
         self.val = val
-
-
-class ValueStatement(Statement):
-    def __init__(self, val: int | None = None):
-        assert val < (1 << 19), f"Value must be less than {1 << 19}, got {val}"
-        assert val > (-(1 << 19) - 1), f"Value must be greater than {- (1 << 19) - 1}, got {val}"
-        super().__init__(Type.INT_TYPE)
-        self.val = val
-
-
-class ReferenceStatement(Statement):
-    def __init__(self, ret_type: Type = Type.UNK_TYPE, symbol: str | None = None):
-        super().__init__(ret_type)
-        self.symbol = symbol
 
 
 def const_statement(node: ASTNode) -> Statement:
     token = node.token
     assert token.tag in (lexer.INT, lexer.STR), f"Unknown const type {token.tag}"
     if token.tag == lexer.INT:
-        const_type = Type.INT_TYPE
         int_val = int(node.token.string)
         if (1 << 19) > int_val > (-(1 << 19) - 1):
-            return ValueStatement(int_val)
+            return Statement(Tag.VALUE, val=int_val)
         global_context.require_int_const(int_val)
-        return ConstStatement(const_type, int_val)
+        return Statement(Tag.INT_CONST, val=int_val)
     if token.tag == lexer.STR:
-        const_type = Type.STR_TYPE
         str_val = node.token.string
         global_context.require_str_const(str_val)
-        return ConstStatement(const_type, str_val)
-    raise NotImplementedError(f"unknown lex tag of ConstStatement, got {token.tag}")
+        return Statement(Tag.STR_CONST, name=str_val)
+    raise NotImplementedError(f"unknown lex tag of constant statement, got {token.tag}")
 
 
 def invoke_statement(node: ASTNode) -> Statement:
@@ -295,15 +256,11 @@ def invoke_statement(node: ASTNode) -> Statement:
     assert name in predefined_funcs, f"Unknown func {name}"
     func = predefined_funcs[name]
     children_nodes = children[1:]
-    assert len(func.args) == len(children_nodes), f"Wrong amount of arguments for func {name}"
+    assert func.argc == len(children_nodes), f"Wrong amount of arguments for func {name}"
     children_statements = []
     for i in range(len(children_nodes)):
-        statement = ast_to_statement(children_nodes[i])
-        assert func.args[i] == statement.ret_type, (
-            f"Wrong ret_type of {name} {i} argument, " f"expected: {func.args[i]}, got: {statement.ret_type}"
-        )
-        children_statements.append(statement)
-    return InvokeStatement(func.ret, name, children_statements)
+        children_statements.append(ast_to_statement(children_nodes[i]))
+    return Statement(Tag.INVOKE, name=name, args=children_statements)
 
 
 def special_statement(node: ASTNode) -> Statement:
@@ -313,25 +270,20 @@ def special_statement(node: ASTNode) -> Statement:
         assert len(children) == 3, "Set statement must contains of variable name and value to set"
         key, val = children[1], children[2]
         assert key.token.tag == lexer.ID, f"variable name must be ID, got {key.token}"
-        args = [ReferenceStatement(symbol=key.token.string), ast_to_statement(val)]
-        global_context.require_variable(key.token.string, args[1].ret_type)
-        return InvokeStatement(args[1].ret_type, name, args)
+        args = [Statement(Tag.REFERENCE, name=key.token.string), ast_to_statement(val)]
+        global_context.require_variable(key.token.string)
+        return Statement(Tag.INVOKE, name=name, args=args)
     if name == "if":
         assert len(children) == 4, "if statement must contains condition and 2 options"
         cond, opt1, opt2 = children[1], children[2], children[3]
-        cond_arg = ast_to_statement(cond)
-        assert cond_arg.ret_type == Type.INT_TYPE, f"condition must return int, got {cond_arg.ret_type}"
-        args = [cond_arg, ast_to_statement(opt1), ast_to_statement(opt2)]
-        assert args[1].ret_type == args[2].ret_type, (
-            f"options must have same ret type, " f"got {args[1].ret_type} and {args[2].ret_type}"
-        )
-        return InvokeStatement(args[1].ret_type, name, args)
+        args = [ast_to_statement(cond), ast_to_statement(opt1), ast_to_statement(opt2)]
+        return Statement(Tag.INVOKE, name=name, args=args)
     raise NotImplementedError(f"unknown special statement, got {name}")
 
 
 def reference_statement(node: ASTNode) -> Statement:
     symbol = node.token.string
-    return ReferenceStatement(global_context.variable_type(symbol), symbol)
+    return Statement(Tag.REFERENCE, name=symbol)
 
 
 def math_statement(node: ASTNode) -> Statement:
@@ -342,29 +294,17 @@ def math_statement(node: ASTNode) -> Statement:
         assert len(children) == 3, f"math statement can operate only with 2 args, got {len(children)}"
     args = []
     for child in children[1:]:
-        statement = ast_to_statement(child)
-        assert statement.ret_type == Type.INT_TYPE, f"math statements can operate with INT, got {statement.ret_type}"
-        args.append(statement)
-    return InvokeStatement(Type.INT_TYPE, name, args)
+        args.append(ast_to_statement(child))
+    return Statement(Tag.INVOKE, name=name, args=args)
 
 
 def bool_statement(node: ASTNode):
     children = node.children
     name = children[0].token.string
-    if name == "=":
-        assert len(children) == 3, "= statement must contains of 2 values to compare"
-        args = [ast_to_statement(children[1]), ast_to_statement(children[2])]
-        assert args[0].ret_type == args[1].ret_type == Type.INT_TYPE, "= can compare only ints"
-        return InvokeStatement(Type.INT_TYPE, name, args)
-    raise NotImplementedError(f"unknown boolean statement, got {name}")
-
-
-def parse_arg(arg: str) -> (str, Type):
-    idx = arg.find(":")
-    name, ret_type = arg[:idx], arg[idx + 1 :]
-    assert ret_type in ("i", "s"), f"ret type must be int or str, got {ret_type}"
-    ret_type = Type.INT_TYPE if ret_type == "i" else Type.STR_TYPE
-    return name, ret_type
+    assert name in ("=", ">="), f"unknown boolean statement, got {name}"
+    assert len(children) == 3, "= statement must contains of 2 values to compare"
+    args = [ast_to_statement(children[1]), ast_to_statement(children[2])]
+    return Statement(Tag.INVOKE, name=name, args=args)
 
 
 def defun_statement(node: ASTNode) -> Statement:
@@ -373,28 +313,26 @@ def defun_statement(node: ASTNode) -> Statement:
     assert len(children) == 4, "defunc statement must contains of name, arguments and body"
 
     func_name = children[1].token
-    assert func_name.tag == lexer.ARG, f"func name must be ARG, got {func_name.tag}"
-    func_name, func_ret_type = parse_arg(func_name.string)
+    assert func_name.tag == lexer.ID, f"func name must be ID, got {func_name.tag}"
+    func_name = func_name.string
 
     args = children[2].children
     assert children[2].token.string == "(", f"arguments must be in parenthesis, got {children[2].token}"
 
-    name_st = ReferenceStatement(func_ret_type, func_name)
-    args_st = InvokeStatement()
+    name_st = Statement(Tag.REFERENCE, name=func_name)
+    args_st = Statement(Tag.INVOKE)
     func_vars = FuncVars()
-    arg_types = []
     for arg in args:
-        assert arg.token.tag == lexer.ARG, f"args must be ARG, got {arg.token}"
-        arg_name, arg_type = parse_arg(arg.token.string)
-        args_st.args.append(ReferenceStatement(arg_type, arg_name))
-        func_vars.add_var(arg_name, arg_type)
-        arg_types.append(arg_type)
+        assert arg.token.tag == lexer.ID, f"args must be ID, got {arg}"
+        arg_name = arg.token.string
+        args_st.args.append(Statement(Tag.REFERENCE, name=arg_name))
+        func_vars.add_var(arg_name)
 
-    predefined_funcs[func_name] = FuncInfo(func_name, arg_types, func_ret_type)
+    predefined_funcs[func_name] = FuncInfo(func_name, len(args_st.args))
     global_context.set_func_vars(func_vars)
     body_st = ast_to_statement(children[3])
     global_context.set_func_vars(None)
-    return InvokeStatement(name=name, args=[name_st, args_st, body_st])
+    return Statement(Tag.INVOKE, name=name, args=[name_st, args_st, body_st])
 
 
 def ast_to_statement(node: ASTNode) -> Statement:
@@ -413,13 +351,13 @@ def ast_to_statement(node: ASTNode) -> Statement:
             return defun_statement(node)
         if tag == lexer.ID:
             return invoke_statement(node)
-        raise NotImplementedError(f"ast to statement translation, got {tag}")
+        raise NotImplementedError(f"unknown node with children token tag, got {tag}")
     tag = node.token.tag
     if tag in (lexer.STR, lexer.INT):
         return const_statement(node)
     if tag == lexer.ID:
         return reference_statement(node)
-    raise NotImplementedError(f"ast to statement translation, got {tag}")
+    raise NotImplementedError(f"unknown node without children token tag, got {tag}")
 
 
 def extract_statements(root: ASTNode) -> list[Statement]:
@@ -433,34 +371,35 @@ def extract_statements(root: ASTNode) -> list[Statement]:
 def translate_invoke_statement_argument(arg: Statement) -> list[Term]:
     arg_code = []
     fc = global_context.get_func_context()
-    if isinstance(arg, ValueStatement):
+    if arg.tag == Tag.VALUE:
         if fc and fc.has_in_acr():
             arg_code.append(Term(Opcode.PUSH))
             fc.on_push()
         arg_code.append(Term(Opcode.LOAD, Address(AddressType.EXACT, arg.val)))
-    elif isinstance(arg, ConstStatement):
+    elif arg.tag in (Tag.INT_CONST, Tag.STR_CONST):
         if fc and fc.has_in_acr():
             arg_code.append(Term(Opcode.PUSH))
             fc.on_push()
-        arg_code.append(Term(Opcode.LOAD, arg.val))
-    elif isinstance(arg, InvokeStatement):
+        arg = arg.val if arg.tag == Tag.INT_CONST else arg.name
+        arg_code.append(Term(Opcode.LOAD, arg))
+    elif arg.tag == Tag.INVOKE:
         arg_code.extend(translate_invoke_statement(arg))
-    elif isinstance(arg, ReferenceStatement):
-        if fc and fc.has_in_acr() and fc.get_in_acr() == arg.symbol:
+    elif arg.tag == Tag.REFERENCE:
+        if fc and fc.has_in_acr() and fc.get_in_acr() == arg.name:
             pass
-        elif fc and arg.symbol in fc.args_table:
+        elif fc and arg.name in fc.args_table:
             if fc.has_in_acr():
                 arg_code.append(Term(Opcode.PUSH))
                 fc.on_push()
-            arg_code.append(Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, fc.args_table[arg.symbol]), arg.symbol))
+            arg_code.append(Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, fc.args_table[arg.name]), arg.name))
         else:
-            arg_code.append(Term(Opcode.LOAD, arg.symbol))
+            arg_code.append(Term(Opcode.LOAD, arg.name))
     else:
-        raise NotImplementedError(f"unknown type of InvokeStatement argument, got {arg}")
+        raise NotImplementedError(f"unknown tag of invoke statement argument, got {arg.tag}")
     return arg_code
 
 
-def translate_read_statement(read: InvokeStatement) -> list[Term]:
+def translate_read_statement(read: Statement) -> list[Term]:
     code = []
     if global_context.get_func_context() and global_context.get_func_context().has_in_acr():
         code.append(Term(Opcode.PUSH))
@@ -470,7 +409,7 @@ def translate_read_statement(read: InvokeStatement) -> list[Term]:
     return code
 
 
-def translate_printi_statement(printi: InvokeStatement) -> list[Term]:
+def translate_printi_statement(printi: Statement) -> list[Term]:
     code = []
     if global_context.get_func_context() and global_context.get_func_context().has_in_acr():
         code.append(Term(Opcode.PUSH))
@@ -487,19 +426,19 @@ def translate_printi_statement(printi: InvokeStatement) -> list[Term]:
     return code
 
 
-def translate_set_statement(set_st: InvokeStatement) -> list[Term]:
+def translate_set_statement(set_st: Statement) -> list[Term]:
     variable, value = set_st.args[0], set_st.args[1]
-    assert isinstance(variable, ReferenceStatement), f"unexpected variable statement type, got {variable}"
-    global_context.require_variable(variable.symbol, value.ret_type)
+    assert variable.tag == Tag.REFERENCE, f"unexpected variable statement type, got {variable}"
+    global_context.require_variable(variable.name)
     code = translate_invoke_statement_argument(value)
-    code.append(Term(Opcode.STORE, variable.symbol))
+    code.append(Term(Opcode.STORE, variable.name))
     return code
 
 
 math_opcode = {"mod": Opcode.MODULO, "+": Opcode.ADD, "-": Opcode.SUBTRACT, "*": Opcode.MULTIPLY, "/": Opcode.DIVIDE}
 
 
-def translate_math_statement(statement: InvokeStatement) -> list[Term]:
+def translate_math_statement(statement: Statement) -> list[Term]:
     code = []
     opcode = math_opcode[statement.name]
     last_arg = statement.args[-1]
@@ -520,7 +459,7 @@ def translate_math_statement(statement: InvokeStatement) -> list[Term]:
 bool_opcode = {"=": Opcode.BRANCH_ZERO, ">=": Opcode.BRANCH_GREATER_EQUALS}
 
 
-def translate_bool_statement(statement: InvokeStatement) -> list[Term]:
+def translate_bool_statement(statement: Statement) -> list[Term]:
     code = []
     opcode = bool_opcode[statement.name]
     code.extend(translate_invoke_statement_argument(statement.args[1]))
@@ -543,7 +482,7 @@ def translate_bool_statement(statement: InvokeStatement) -> list[Term]:
     return code
 
 
-def translate_if_statement(statement: InvokeStatement) -> list[Term]:
+def translate_if_statement(statement: Statement) -> list[Term]:
     code = []
     cond_code = translate_invoke_statement_argument(statement.args[0])
     opt1_code = translate_invoke_statement_argument(statement.args[1])
@@ -561,16 +500,16 @@ def translate_if_statement(statement: InvokeStatement) -> list[Term]:
     return code
 
 
-def translate_defun_statement(defun: InvokeStatement) -> list[Term]:
+def translate_defun_statement(defun: Statement) -> list[Term]:
     predefined_code = []
-    func_name = defun.args[0].symbol
-    arguments = defun.args[1].args
+    func_name = defun.args[0].name
+    arguments: list[Statement] = defun.args[1].args
     func_context = FuncContext()
     if len(arguments) > 0:
         first_argument = arguments[0]
-        func_context.args_table[first_argument.symbol] = -1
+        func_context.args_table[first_argument.name] = -1
     for i, argument in enumerate(arguments[1:]):
-        func_context.args_table[argument.symbol] = 1 + i
+        func_context.args_table[argument.name] = 1 + i
     global_context.set_func_context(func_context)
     predefined_code.extend(translate_invoke_statement_argument(defun.args[2]))
     if 0 in func_context.args_table.values():
@@ -581,7 +520,7 @@ def translate_defun_statement(defun: InvokeStatement) -> list[Term]:
     return []
 
 
-def translate_invoke_statement_common(statement: InvokeStatement) -> list[Term]:
+def translate_invoke_statement_common(statement: Statement) -> list[Term]:
     args = statement.args
     code = []
     for arg in args[-1:0:-1]:
@@ -599,7 +538,7 @@ def translate_invoke_statement_common(statement: InvokeStatement) -> list[Term]:
     return code
 
 
-def translate_invoke_statement(statement: InvokeStatement) -> list[Term]:
+def translate_invoke_statement(statement: Statement) -> list[Term]:
     if statement.name == "set":
         return translate_set_statement(statement)
     if statement.name in ("mod", "+", "-", "/", "*"):
@@ -619,9 +558,9 @@ def translate_invoke_statement(statement: InvokeStatement) -> list[Term]:
 
 
 def translate_statement(statement: Statement) -> list[Term]:
-    if isinstance(statement, InvokeStatement):
+    if statement.tag == Tag.INVOKE:
         return translate_invoke_statement(statement)
-    raise NotImplementedError(f"unknown type of Statement to translate, got {statement}")
+    raise NotImplementedError(f"unknown tag of statement to translate, got {statement.tag}")
 
 
 class Code:
