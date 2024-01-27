@@ -102,5 +102,5 @@ class Term:
         if self.arg:
             s += f" {self.arg}"
         if self.desc:
-            s += f"\t\t\t({self.desc})"
-        return s
+            s += f"\t({self.desc})"
+        return s.expandtabs(20)

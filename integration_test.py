@@ -14,6 +14,7 @@ def test_translator_and_machine(golden, caplog):
         source = os.path.join(tmpdirname, "source")
         input_stream = os.path.join(tmpdirname, "input")
         target = os.path.join(tmpdirname, "target")
+        debug = os.path.join(tmpdirname, "debug")
 
         with open(source, "w", encoding="utf-8") as file:
             file.write(golden["in_source"])
@@ -21,7 +22,9 @@ def test_translator_and_machine(golden, caplog):
             file.write(golden["in_stdin"])
 
         with contextlib.redirect_stdout(io.StringIO()) as stdout:
-            translator.main(source, target)
-            machine.main(target, input_stream)
+            with open(source, encoding="utf-8") as s, open(target, "wb") as t, open(debug, "w", encoding="utf-8") as d:
+                translator.main(s, t, d)
+            with open(target, "rb") as t, open(input_stream, encoding="utf-8") as i:
+                machine.main(t, i)
 
         assert stdout.getvalue() == golden.out["out_stdout"]

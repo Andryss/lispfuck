@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import argparse
 import logging
-import sys
+import typing
 from enum import Enum
 
 import lexer
@@ -659,6 +660,10 @@ def translate(src: str) -> Code:
     return translate_into_code(statements)
 
 
+def read_source(src: typing.TextIO) -> str:
+    return src.read()
+
+
 def int_to_bytes(i: int, size: int) -> bytearray:
     assert i >= 0, f"must be non negative, got {i}"
     assert i < (1 << (8 * size)), f"value would lose precision, got {i} with size {size}"
@@ -737,60 +742,81 @@ def code_to_binary(code: Code) -> bytearray:
 
 
 def text_data_memory(code: Code) -> list[str]:
-    lines = ["<address> - <length> - <data>\n"]
+    lines = ["<address>\t<length>\t<data>"]
     for block in code.data_memory:
         addr = "0x{:03x}".format(block[0])
-        lines.append(f"{addr} - {block[1]}\t- {block[2]}\n")
+        lines.append(f"{addr}\t{block[1]}\t{block[2]}")
     return lines
 
 
 def text_instr_memory(code: Code) -> list[str]:
-    lines = ["<address> - <hexcode> - <mnemonica>\n"]
+    lines = ["<address>\t<hexcode>\t<mnemonica>"]
     for block in code.instr_memory:
-        lines.append(f"{block[2]}:\n")
+        lines.append(f"{block[2]}:")
         base_addr = block[0]
         for i, term in enumerate(block[3]):
-            addr = "0x{:03x}".format(base_addr + i)
-            lines.append(f"{addr} - 0x{term_to_binary(term).hex()} - {term}\n")
+            addr = "0x{:08x}".format(base_addr + i)
+            lines.append(f"{addr}\t0x{term_to_binary(term).hex()}\t{term}")
     return lines
 
 
-def code_to_text(code: Code) -> list[str]:
-    lines = ["##### Data section #####\n"]
+def code_to_text(code: Code) -> str:
+    lines = ["##### Data section #####"]
     lines.extend(text_data_memory(code))
-    lines.append("\n##### Instruction section #####\n")
+    lines.append("\n##### Instruction section #####")
     lines.extend(text_instr_memory(code))
-    return lines
+    return "\n".join(lines).expandtabs(15)
 
 
-def write_code(dst: str, code: Code):
+def write_code(dst: typing.BinaryIO, dbg: typing.TextIO, code: Code) -> (bytearray, str):
     binary = code_to_binary(code)
-
-    with open(dst, "wb") as f:
-        f.write(binary)
-
+    dst.write(binary)
     text = code_to_text(code)
-
-    with open(dst + ".debug", "w") as f:
-        f.writelines(text)
-
-    return binary
+    dbg.write(text)
+    return binary, text
 
 
-def main(src: str, dst: str):
-    with open(src, encoding="utf-8") as f:
-        src = f.read()
+def main(src: typing.TextIO, dst: typing.BinaryIO, dbg: typing.TextIO, verbose: bool = False):
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
 
-    code = translate(src)
+    source = read_source(src)
+    code = translate(source)
+    binary, debug = write_code(dst, dbg, code)
 
-    binary = write_code(dst, code)
-
-    loc, code_byte, code_instr = len(src.split("\n")), len(binary), len(code)
-    logging.info(f"LoC: {loc} code byte: {code_byte} code instr: {code_instr}")
+    loc, code_byte, code_instr, debug_lines = len(source.split("\n")), len(binary), len(code), len(debug.split("\n"))
+    logging.info(f"LoC: {loc} code byte: {code_byte} code instr: {code_instr} debug lines: {debug_lines}")
 
 
 if __name__ == "__main__":
-    logging.getLogger().setLevel(logging.DEBUG)
-    assert len(sys.argv) == 3, "Usage: translator.py <input_file> <target_file>"
-    _, source, target = sys.argv
-    main(source, target)
+    parser = argparse.ArgumentParser(description="Translates lispfuck code into en executable file.")
+    parser.add_argument(
+        "src", type=argparse.FileType(encoding="utf-8"), metavar="source_file", help="file with lispfuck code"
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        dest="dst",
+        type=argparse.FileType("wb"),
+        default="output",
+        metavar="output_file",
+        help="file for storing a binary executable (default: output)",
+    )
+    parser.add_argument(
+        "--debug",
+        "-d",
+        dest="dbg",
+        type=argparse.FileType("w", encoding="utf-8"),
+        default="debug.txt",
+        metavar="debug_file",
+        help="file for storing a binary executable explanation info (default: debug.txt)",
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        dest="verbose",
+        action="store_true",
+        help="print verbose information during conversion",
+    )
+    args = parser.parse_args()
+    main(args.src, args.dst, args.dbg, args.verbose)

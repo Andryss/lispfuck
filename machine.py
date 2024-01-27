@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import argparse
 import logging
-import sys
+import typing
 from enum import Enum
 from typing import AnyStr, BinaryIO
 
@@ -58,17 +59,25 @@ def read_instr(f: BinaryIO) -> list[Term]:
     return instructions
 
 
-def read_code(src: str) -> Code:
-    with open(src, "rb") as f:
-        data_offset = bytes_to_int(f.read(2))
-        instr_offset = bytes_to_int(f.read(2))
-        magic = bytes_to_int(f.read(2))
-        assert magic == 0xC0DE, f"Wrong magic, got {magic}"
-        f.seek(data_offset)
-        data = read_data(f)
-        f.seek(instr_offset)
-        instr = read_instr(f)
-        return Code(data, instr)
+def read_code(src: typing.BinaryIO) -> Code:
+    data_offset = bytes_to_int(src.read(2))
+    instr_offset = bytes_to_int(src.read(2))
+    magic = bytes_to_int(src.read(2))
+    assert magic == 0xC0DE, f"Wrong magic, got {magic}"
+    src.seek(data_offset)
+    data = read_data(src)
+    src.seek(instr_offset)
+    instr = read_instr(src)
+    return Code(data, instr)
+
+
+def read_input(in_file: typing.TextIO) -> list[str]:
+    if in_file is None:
+        return []
+    tokens = []
+    for char in in_file.read():
+        tokens.append(char)
+    return tokens
 
 
 class Reg(Enum):
@@ -492,22 +501,35 @@ def simulation(code: Code, input_tokens: list[str], data_memory_size: int = 0x1F
     return "".join(data_path.output_tokens), instruction_proceed, control_unit.ticks
 
 
-def main(src: str, in_file: str):
+def main(src: typing.BinaryIO, in_file: typing.TextIO, verbose: bool = False):
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
     code = read_code(src)
-
-    input_tokens = []
-    with open(in_file) as f:
-        input_text = f.read()
-        for char in input_text:
-            input_tokens.append(char)
+    input_tokens = read_input(in_file)
     output, instr, ticks = simulation(code, input_tokens)
-    logging.info(f"instr: {instr} ticks: {ticks}")
 
+    logging.info(f"instr: {instr} ticks: {ticks}")
     print(output)
 
 
 if __name__ == "__main__":
-    logging.getLogger().setLevel(logging.DEBUG)
-    assert len(sys.argv) == 3, "Usage: machine.py <code_file> <input_file>"
-    _, code_file, input_file = sys.argv
-    main(code_file, input_file)
+    parser = argparse.ArgumentParser(description="Execute lispfuck binary executable file.")
+    parser.add_argument("src", type=argparse.FileType("rb"), metavar="binary_file", help="binary executable file")
+    parser.add_argument(
+        "--input",
+        "-i",
+        dest="in_file",
+        type=argparse.FileType(encoding="utf-8"),
+        metavar="input_file",
+        help="file with input data for executable (default: empty file)",
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        dest="verbose",
+        action="store_true",
+        help="print verbose information during execution",
+    )
+    args = parser.parse_args()
+    main(args.src, args.in_file, args.verbose)
