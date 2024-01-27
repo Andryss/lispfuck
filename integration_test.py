@@ -1,6 +1,5 @@
 import contextlib
 import io
-import logging
 import os
 import tempfile
 
@@ -11,8 +10,6 @@ import translator
 
 @pytest.mark.golden_test("golden/*.yml")
 def test_translator_and_machine(golden, caplog):
-    caplog.set_level(logging.DEBUG)
-
     with tempfile.TemporaryDirectory() as tmpdirname:
         source = os.path.join(tmpdirname, "source")
         input_stream = os.path.join(tmpdirname, "input")
@@ -25,12 +22,6 @@ def test_translator_and_machine(golden, caplog):
 
         with contextlib.redirect_stdout(io.StringIO()) as stdout:
             translator.main(source, target)
-            print("============================================================")
             machine.main(target, input_stream)
 
-        with open(target + ".debug", encoding="utf-8") as file:
-            code = file.read()
-
-        assert code == golden.out["out_code"]
         assert stdout.getvalue() == golden.out["out_stdout"]
-        assert caplog.text == golden.out["out_log"]

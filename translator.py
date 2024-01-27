@@ -785,7 +785,8 @@ def main(src: str, dst: str):
 
     binary = write_code(dst, code)
 
-    print("LoC:", len(src.split("\n")), "code byte:", len(binary), "code instr:", len(code))
+    loc, code_byte, code_instr = len(src.split("\n")), len(binary), len(code)
+    logging.info(f"LoC: {loc} code byte: {code_byte} code instr: {code_instr}")
 
 
 if __name__ == "__main__":

@@ -501,9 +501,9 @@ def main(src: str, in_file: str):
         for char in input_text:
             input_tokens.append(char)
     output, instr, ticks = simulation(code, input_tokens)
+    logging.info(f"instr: {instr} ticks: {ticks}")
 
     print(output)
-    print("instr: ", instr, "ticks: ", ticks)
 
 
 if __name__ == "__main__":
