@@ -56,15 +56,19 @@ predefined_funcs: dict[str, FuncInfo] = {
         1,
         [
             Term(Opcode.PUSH),
+            Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
             Term(Opcode.PUSH),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_INDIRECT_SPR, 0)),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
             Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 4)),
+            Term(Opcode.BRANCH_EQUAL, Address(AddressType.RELATIVE_IPR, 8)),
             Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
+            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 1)),
             Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -5)),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.COMPARE, Address(AddressType.EXACT, 128)),
+            Term(Opcode.BRANCH_EQUAL, Address(AddressType.RELATIVE_IPR, 2)),
+            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
             Term(Opcode.POP),
-            Term(Opcode.SUBTRACT, Address(AddressType.RELATIVE_SPR, 0)),
             Term(Opcode.POPN),
             Term(Opcode.RETURN),
         ],
@@ -94,7 +98,7 @@ predefined_funcs: dict[str, FuncInfo] = {
             Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
             Term(Opcode.DIVIDE, Address(AddressType.EXACT, 10)),
             Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 3)),
+            Term(Opcode.BRANCH_EQUAL, Address(AddressType.RELATIVE_IPR, 3)),
             Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 0)),
             Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
             Term(Opcode.POP),
@@ -120,13 +124,13 @@ predefined_funcs: dict[str, FuncInfo] = {
             Term(Opcode.PUSH),
             Term(Opcode.LOAD, Address(AddressType.ABSOLUTE, 5555)),
             Term(Opcode.COMPARE, Address(AddressType.EXACT, ord("\n"))),
-            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 8)),
+            Term(Opcode.BRANCH_EQUAL, Address(AddressType.RELATIVE_IPR, 8)),
             Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
             Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 1)),
             Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
             Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.COMPARE, Address(AddressType.EXACT, 127)),
-            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 2)),
+            Term(Opcode.COMPARE, Address(AddressType.EXACT, 128)),
+            Term(Opcode.BRANCH_EQUAL, Address(AddressType.RELATIVE_IPR, 2)),
             Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
             Term(Opcode.LOAD, Address(AddressType.EXACT, ord("\0"))),
             Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
@@ -414,7 +418,7 @@ def translate_read_statement(read: Statement, context: ProgramContext) -> list[T
     if context.func_context_has_in_acr():
         code.append(Term(Opcode.PUSH))
         context.func_context_on_push()
-    read.anon_var_name = context.require_anon_variable(128)
+    read.anon_var_name = context.require_anon_variable(129)
     code.extend([Term(Opcode.LOAD, read.anon_var_name), Term(Opcode.CALL, read.name)])
     return code
 
@@ -462,7 +466,7 @@ def translate_math_statement(statement: Statement, context: ProgramContext) -> l
     return code
 
 
-bool_opcode = {"=": Opcode.BRANCH_ZERO, ">=": Opcode.BRANCH_GREATER_EQUALS}
+bool_opcode = {"=": Opcode.BRANCH_EQUAL, ">=": Opcode.BRANCH_GREATER_EQUALS}
 
 
 def translate_bool_statement(statement: Statement, context: ProgramContext) -> list[Term]:
@@ -495,7 +499,7 @@ def translate_if_statement(statement: Statement, context: ProgramContext) -> lis
     cond_code.extend(
         [
             Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, len(opt1_code) + 1)),
+            Term(Opcode.BRANCH_EQUAL, Address(AddressType.RELATIVE_IPR, len(opt1_code) + 1)),
         ]
     )
     code.extend(cond_code)
@@ -764,9 +768,9 @@ def text_instr_memory(code: Code) -> list[str]:
 
 
 def code_to_text(code: Code) -> str:
-    lines = ["##### Data section #####"]
+    lines = ["##### Data memory #####"]
     lines.extend(text_data_memory(code))
-    lines.append("\n##### Instruction section #####")
+    lines.append("\n##### Instruction memory #####")
     lines.extend(text_instr_memory(code))
     return "\n".join(lines).expandtabs(15)
 

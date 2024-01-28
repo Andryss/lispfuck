@@ -284,7 +284,7 @@ class ControlUnit:
         self.tick()
 
     def execute_branch_control_instruction(self, instr: Term):
-        if instr.op == Opcode.BRANCH_ZERO:
+        if instr.op == Opcode.BRANCH_EQUAL:
             assert instr.arg.kind == AddressType.RELATIVE_IPR, f"unsupported addressing for brz, got {instr}"
             if self.data_path.zero():
                 self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.ADR])
@@ -327,7 +327,7 @@ class ControlUnit:
         if opcode in (Opcode.CALL, Opcode.RETURN):
             self.execute_call_control_instruction(instr)
             return True
-        if opcode in (Opcode.BRANCH_ZERO, Opcode.BRANCH_GREATER_EQUALS, Opcode.BRANCH_ANY):
+        if opcode in (Opcode.BRANCH_EQUAL, Opcode.BRANCH_GREATER_EQUALS, Opcode.BRANCH_ANY):
             self.execute_branch_control_instruction(instr)
             return True
         return False
