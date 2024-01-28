@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import collections
+import copy
 import logging
 import typing
 from enum import Enum
@@ -48,7 +50,90 @@ class FuncInfo:
         self.code = [] if code is None else code
 
 
-predefined_funcs: dict[str, FuncInfo]
+predefined_funcs: dict[str, FuncInfo] = {
+    "prints": FuncInfo(
+        "prints",
+        1,
+        [
+            Term(Opcode.PUSH),
+            Term(Opcode.PUSH),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_INDIRECT_SPR, 0)),
+            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
+            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 4)),
+            Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
+            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -5)),
+            Term(Opcode.POP),
+            Term(Opcode.SUBTRACT, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.POPN),
+            Term(Opcode.RETURN),
+        ],
+    ),
+    "printi": FuncInfo(
+        "printi",
+        1,
+        [
+            Term(Opcode.PUSH),
+            Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
+            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 2)),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
+            Term(Opcode.BRANCH_GREATER_EQUALS, Address(AddressType.RELATIVE_IPR, 5)),
+            Term(Opcode.LOAD, Address(AddressType.EXACT, ord("-"))),
+            Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.INVERSE),
+            Term(Opcode.PUSH),
+            Term(Opcode.MODULO, Address(AddressType.EXACT, 10)),
+            Term(Opcode.ADD, Address(AddressType.EXACT, ord("0"))),
+            Term(Opcode.DECREMENT, Address(AddressType.RELATIVE_SPR, 3)),
+            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 3)),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.DIVIDE, Address(AddressType.EXACT, 10)),
+            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
+            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 3)),
+            Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
+            Term(Opcode.POP),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 2)),
+            Term(Opcode.CALL, "prints"),
+            Term(Opcode.PUSH),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 1)),
+            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
+            Term(Opcode.BRANCH_GREATER_EQUALS, Address(AddressType.RELATIVE_IPR, 2)),
+            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.POP),
+            Term(Opcode.POPN),
+            Term(Opcode.RETURN),
+        ],
+    ),
+    "read": FuncInfo(
+        "read",
+        0,
+        [
+            Term(Opcode.PUSH),
+            Term(Opcode.PUSH),
+            Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
+            Term(Opcode.PUSH),
+            Term(Opcode.LOAD, Address(AddressType.ABSOLUTE, 5555)),
+            Term(Opcode.COMPARE, Address(AddressType.EXACT, ord("\n"))),
+            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 8)),
+            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
+            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 1)),
+            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
+            Term(Opcode.COMPARE, Address(AddressType.EXACT, 127)),
+            Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 2)),
+            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
+            Term(Opcode.LOAD, Address(AddressType.EXACT, ord("\0"))),
+            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
+            Term(Opcode.POP),
+            Term(Opcode.POP),
+            Term(Opcode.POP),
+            Term(Opcode.RETURN),
+        ],
+    ),
+}
 
 
 class FuncVars:
@@ -79,12 +164,15 @@ class FuncContext:
         self.args_table = {k: v - 1 for k, v in self.args_table.items()}
 
 
-class GlobalContext:
+class ProgramContext:
     def __init__(self):
-        self.function_table: dict[str, FuncInfo] = {}
-        self.const_table: set[str | int] = set()
-        self.var_table: set[str] = set()
-        self.anon_var_table: dict[str, tuple[int, int]] = {}
+        self.defined_funcs: dict[str, FuncInfo] = copy.deepcopy(predefined_funcs)
+        self.function_table: list[str] = []
+
+        self.str_const_table: list[str] = []
+        self.int_const_table: list[int] = []
+        self.var_table: list[str] = []
+        self.anon_var_table: dict[str, tuple[int, int]] = collections.OrderedDict()
         self.anon_var_pointer = 0
         self.anon_var_counter = 0
 
@@ -92,18 +180,37 @@ class GlobalContext:
         self.func_context: FuncContext | None = None
 
     def require_func(self, func: str):
-        assert func in predefined_funcs, f"Unknown func {func}"
-        self.function_table[func] = predefined_funcs[func]
+        assert func in self.defined_funcs, f"Unknown func {func}"
+        if func not in self.function_table:
+            self.function_table.append(func)
+
+    def define_func(self, name: str, argc: int):
+        assert name not in self.defined_funcs, f"Function {name} already defined"
+        assert argc >= 0, f"Function must have positive or zero arguments, got {argc}"
+        self.defined_funcs[name] = FuncInfo(name, argc)
+
+    def implement_func(self, name: str, code: list[Term]):
+        assert name in self.defined_funcs, f"Unknown function to implement, got {name}"
+        func_info = self.defined_funcs[name]
+        assert len(func_info.code) == 0, f"Reimplementation of function {name}"
+        assert len(code) > 0, f"Implementation must have at least 1 statement, got {code}"
+        func_info.code = code
+
+    def func_info(self, func: str) -> FuncInfo:
+        assert func in self.defined_funcs, f"Unknown func {func}"
+        return self.defined_funcs[func]
 
     def require_int_const(self, const: int):
         assert const < (1 << 63), f"Value must be less than {1 << 63}, got {const}"
         assert const > (-(1 << 63) - 1), f"Value must be greater than {- (1 << 63) - 1}, got {const}"
-        self.const_table.add(const)
+        if const not in self.int_const_table:
+            self.int_const_table.append(const)
 
     def require_str_const(self, const: str):
         assert const[0] != '"', f"Value must be trimmed, got {const}"
         assert const[-1] != '"', f"Value must be trimmed, got {const}"
-        self.const_table.add(const)
+        if const not in self.str_const_table:
+            self.str_const_table.append(const)
 
     def require_anon_variable(self, size: int, offset: int = 0) -> str:
         assert size > 0, f"negative size buffer?, got {size}"
@@ -114,7 +221,8 @@ class GlobalContext:
         return name
 
     def require_variable(self, name: str):
-        self.var_table.add(name)
+        if name not in self.var_table:
+            self.var_table.append(name)
 
     def set_func_vars(self, fv: FuncVars | None):
         self.func_vars = fv
@@ -124,98 +232,6 @@ class GlobalContext:
 
     def get_func_context(self) -> FuncContext | None:
         return self.func_context
-
-
-global_context: GlobalContext
-
-
-def init_base_funcs():
-    global predefined_funcs, global_context
-    global_context = GlobalContext()
-    predefined_funcs = {
-        "prints": FuncInfo(
-            "prints",
-            1,
-            [
-                Term(Opcode.PUSH),
-                Term(Opcode.PUSH),
-                Term(Opcode.LOAD, Address(AddressType.RELATIVE_INDIRECT_SPR, 0)),
-                Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-                Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 4)),
-                Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
-                Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
-                Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -5)),
-                Term(Opcode.POP),
-                Term(Opcode.SUBTRACT, Address(AddressType.RELATIVE_SPR, 0)),
-                Term(Opcode.POPN),
-                Term(Opcode.RETURN),
-            ],
-        ),
-        "printi": FuncInfo(
-            "printi",
-            1,
-            [
-                Term(Opcode.PUSH),
-                Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
-                Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 2)),
-                Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
-                Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-                Term(Opcode.BRANCH_GREATER_EQUALS, Address(AddressType.RELATIVE_IPR, 5)),
-                Term(Opcode.LOAD, Address(AddressType.EXACT, ord("-"))),
-                Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
-                Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
-                Term(Opcode.INVERSE),
-                Term(Opcode.PUSH),
-                Term(Opcode.MODULO, Address(AddressType.EXACT, 10)),
-                Term(Opcode.ADD, Address(AddressType.EXACT, ord("0"))),
-                Term(Opcode.DECREMENT, Address(AddressType.RELATIVE_SPR, 3)),
-                Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 3)),
-                Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
-                Term(Opcode.DIVIDE, Address(AddressType.EXACT, 10)),
-                Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-                Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 3)),
-                Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 0)),
-                Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
-                Term(Opcode.POP),
-                Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 2)),
-                Term(Opcode.CALL, "prints"),
-                Term(Opcode.PUSH),
-                Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 1)),
-                Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-                Term(Opcode.BRANCH_GREATER_EQUALS, Address(AddressType.RELATIVE_IPR, 2)),
-                Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
-                Term(Opcode.POP),
-                Term(Opcode.POPN),
-                Term(Opcode.RETURN),
-            ],
-        ),
-        "read": FuncInfo(
-            "read",
-            0,
-            [
-                Term(Opcode.PUSH),
-                Term(Opcode.PUSH),
-                Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
-                Term(Opcode.PUSH),
-                Term(Opcode.LOAD, Address(AddressType.ABSOLUTE, 5555)),
-                Term(Opcode.COMPARE, Address(AddressType.EXACT, ord("\n"))),
-                Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 8)),
-                Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
-                Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 1)),
-                Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
-                Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
-                Term(Opcode.COMPARE, Address(AddressType.EXACT, 127)),
-                Term(Opcode.BRANCH_ZERO, Address(AddressType.RELATIVE_IPR, 2)),
-                Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
-                Term(Opcode.LOAD, Address(AddressType.EXACT, ord("\0"))),
-                Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
-                Term(Opcode.POP),
-                Term(Opcode.POP),
-                Term(Opcode.POP),
-                Term(Opcode.RETURN),
-            ],
-        ),
-    }
 
 
 class Tag(Enum):
@@ -234,50 +250,49 @@ class Statement:
         self.val = val
 
 
-def const_statement(node: ASTNode) -> Statement:
+def const_statement(node: ASTNode, context: ProgramContext) -> Statement:
     token = node.token
     assert token.tag in (lexer.INT, lexer.STR), f"Unknown const type {token.tag}"
     if token.tag == lexer.INT:
         int_val = int(node.token.string)
         if (1 << 19) > int_val > (-(1 << 19) - 1):
             return Statement(Tag.VALUE, val=int_val)
-        global_context.require_int_const(int_val)
+        context.require_int_const(int_val)
         return Statement(Tag.INT_CONST, val=int_val)
     if token.tag == lexer.STR:
         str_val = node.token.string
-        global_context.require_str_const(str_val)
+        context.require_str_const(str_val)
         return Statement(Tag.STR_CONST, name=str_val)
     raise NotImplementedError(f"unknown lex tag of constant statement, got {token.tag}")
 
 
-def invoke_statement(node: ASTNode) -> Statement:
+def invoke_statement(node: ASTNode, context: ProgramContext) -> Statement:
     children = node.children
     assert len(children[0].children) == 0, "Name of statement must be string"
     name = children[0].token.string
-    assert name in predefined_funcs, f"Unknown func {name}"
-    func = predefined_funcs[name]
+    func = context.func_info(name)
     children_nodes = children[1:]
     assert func.argc == len(children_nodes), f"Wrong amount of arguments for func {name}"
     children_statements = []
     for i in range(len(children_nodes)):
-        children_statements.append(ast_to_statement(children_nodes[i]))
+        children_statements.append(ast_to_statement(children_nodes[i], context))
     return Statement(Tag.INVOKE, name=name, args=children_statements)
 
 
-def special_statement(node: ASTNode) -> Statement:
+def special_statement(node: ASTNode, context: ProgramContext) -> Statement:
     children = node.children
     name = children[0].token.string
     if name == "set":
         assert len(children) == 3, "Set statement must contains of variable name and value to set"
         key, val = children[1], children[2]
         assert key.token.tag == lexer.ID, f"variable name must be ID, got {key.token}"
-        args = [Statement(Tag.REFERENCE, name=key.token.string), ast_to_statement(val)]
-        global_context.require_variable(key.token.string)
+        args = [Statement(Tag.REFERENCE, name=key.token.string), ast_to_statement(val, context)]
+        context.require_variable(key.token.string)
         return Statement(Tag.INVOKE, name=name, args=args)
     if name == "if":
         assert len(children) == 4, "if statement must contains condition and 2 options"
         cond, opt1, opt2 = children[1], children[2], children[3]
-        args = [ast_to_statement(cond), ast_to_statement(opt1), ast_to_statement(opt2)]
+        args = [ast_to_statement(cond, context), ast_to_statement(opt1, context), ast_to_statement(opt2, context)]
         return Statement(Tag.INVOKE, name=name, args=args)
     raise NotImplementedError(f"unknown special statement, got {name}")
 
@@ -287,7 +302,7 @@ def reference_statement(node: ASTNode) -> Statement:
     return Statement(Tag.REFERENCE, name=symbol)
 
 
-def math_statement(node: ASTNode) -> Statement:
+def math_statement(node: ASTNode, context: ProgramContext) -> Statement:
     children = node.children
     name = children[0].token.string
     assert name in ("mod", "+", "-", "/", "*"), f"unknown math statement, got {name}"
@@ -295,20 +310,20 @@ def math_statement(node: ASTNode) -> Statement:
         assert len(children) == 3, f"math statement can operate only with 2 args, got {len(children)}"
     args = []
     for child in children[1:]:
-        args.append(ast_to_statement(child))
+        args.append(ast_to_statement(child, context))
     return Statement(Tag.INVOKE, name=name, args=args)
 
 
-def bool_statement(node: ASTNode):
+def bool_statement(node: ASTNode, context: ProgramContext):
     children = node.children
     name = children[0].token.string
     assert name in ("=", ">="), f"unknown boolean statement, got {name}"
     assert len(children) == 3, "= statement must contains of 2 values to compare"
-    args = [ast_to_statement(children[1]), ast_to_statement(children[2])]
+    args = [ast_to_statement(children[1], context), ast_to_statement(children[2], context)]
     return Statement(Tag.INVOKE, name=name, args=args)
 
 
-def defun_statement(node: ASTNode) -> Statement:
+def defun_statement(node: ASTNode, context: ProgramContext) -> Statement:
     children = node.children
     name = children[0].token.string
     assert len(children) == 4, "defunc statement must contains of name, arguments and body"
@@ -329,49 +344,48 @@ def defun_statement(node: ASTNode) -> Statement:
         args_st.args.append(Statement(Tag.REFERENCE, name=arg_name))
         func_vars.add_var(arg_name)
 
-    predefined_funcs[func_name] = FuncInfo(func_name, len(args_st.args))
-    global_context.set_func_vars(func_vars)
-    body_st = ast_to_statement(children[3])
-    global_context.set_func_vars(None)
+    context.define_func(func_name, len(args_st.args))
+    context.set_func_vars(func_vars)
+    body_st = ast_to_statement(children[3], context)
+    context.set_func_vars(None)
     return Statement(Tag.INVOKE, name=name, args=[name_st, args_st, body_st])
 
 
-def ast_to_statement(node: ASTNode) -> Statement:
+def ast_to_statement(node: ASTNode, context: ProgramContext) -> Statement:
     children = node.children
     if len(children) > 0:
         tag = children[0].token.tag
         if tag == lexer.FUNC:
-            return invoke_statement(node)
+            return invoke_statement(node, context)
         if tag == lexer.SPECIAL:
-            return special_statement(node)
+            return special_statement(node, context)
         if tag == lexer.MATH:
-            return math_statement(node)
+            return math_statement(node, context)
         if tag == lexer.BOOL:
-            return bool_statement(node)
+            return bool_statement(node, context)
         if tag == lexer.DEFUNC:
-            return defun_statement(node)
+            return defun_statement(node, context)
         if tag == lexer.ID:
-            return invoke_statement(node)
+            return invoke_statement(node, context)
         raise NotImplementedError(f"unknown node with children token tag, got {tag}")
     tag = node.token.tag
     if tag in (lexer.STR, lexer.INT):
-        return const_statement(node)
+        return const_statement(node, context)
     if tag == lexer.ID:
         return reference_statement(node)
     raise NotImplementedError(f"unknown node without children token tag, got {tag}")
 
 
-def extract_statements(root: ASTNode) -> list[Statement]:
-    init_base_funcs()
+def extract_statements(root: ASTNode, context: ProgramContext) -> list[Statement]:
     statements = []
     for node in root.children:
-        statements.append(ast_to_statement(node))
+        statements.append(ast_to_statement(node, context))
     return statements
 
 
-def translate_invoke_statement_argument(arg: Statement) -> list[Term]:
+def translate_invoke_statement_argument(arg: Statement, context: ProgramContext) -> list[Term]:
     arg_code = []
-    fc = global_context.get_func_context()
+    fc = context.get_func_context()
     if arg.tag == Tag.VALUE:
         if fc and fc.has_in_acr():
             arg_code.append(Term(Opcode.PUSH))
@@ -384,7 +398,7 @@ def translate_invoke_statement_argument(arg: Statement) -> list[Term]:
         arg = arg.val if arg.tag == Tag.INT_CONST else arg.name
         arg_code.append(Term(Opcode.LOAD, arg))
     elif arg.tag == Tag.INVOKE:
-        arg_code.extend(translate_invoke_statement(arg))
+        arg_code.extend(translate_invoke_statement(arg, context))
     elif arg.tag == Tag.REFERENCE:
         if fc and fc.has_in_acr() and fc.get_in_acr() == arg.name:
             pass
@@ -400,38 +414,38 @@ def translate_invoke_statement_argument(arg: Statement) -> list[Term]:
     return arg_code
 
 
-def translate_read_statement(read: Statement) -> list[Term]:
+def translate_read_statement(read: Statement, context: ProgramContext) -> list[Term]:
     code = []
-    if global_context.get_func_context() and global_context.get_func_context().has_in_acr():
+    if context.get_func_context() and context.get_func_context().has_in_acr():
         code.append(Term(Opcode.PUSH))
-        global_context.get_func_context().on_push()
-    read.anon_var_name = global_context.require_anon_variable(128)
+        context.get_func_context().on_push()
+    read.anon_var_name = context.require_anon_variable(128)
     code.extend([Term(Opcode.LOAD, read.anon_var_name), Term(Opcode.CALL, read.name)])
     return code
 
 
-def translate_printi_statement(printi: Statement) -> list[Term]:
+def translate_printi_statement(printi: Statement, context: ProgramContext) -> list[Term]:
     code = []
-    if global_context.get_func_context() and global_context.get_func_context().has_in_acr():
+    if context.get_func_context() and context.get_func_context().has_in_acr():
         code.append(Term(Opcode.PUSH))
-        global_context.get_func_context().on_push()
-    global_context.require_func("prints")
-    printi.anon_var_name = global_context.require_anon_variable(21, offset=20)
+        context.get_func_context().on_push()
+    context.require_func("prints")
+    printi.anon_var_name = context.require_anon_variable(21, offset=20)
     code.extend([Term(Opcode.LOAD, printi.anon_var_name), Term(Opcode.PUSH)])
-    if global_context.get_func_context():
-        global_context.get_func_context().on_push()
-    code.extend(translate_invoke_statement_argument(printi.args[0]))
+    if context.get_func_context():
+        context.get_func_context().on_push()
+    code.extend(translate_invoke_statement_argument(printi.args[0], context))
     code.extend([Term(Opcode.CALL, printi.name), Term(Opcode.POPN)])
-    if global_context.get_func_context():
-        global_context.get_func_context().on_pop()
+    if context.get_func_context():
+        context.get_func_context().on_pop()
     return code
 
 
-def translate_set_statement(set_st: Statement) -> list[Term]:
+def translate_set_statement(set_st: Statement, context: ProgramContext) -> list[Term]:
     variable, value = set_st.args[0], set_st.args[1]
     assert variable.tag == Tag.REFERENCE, f"unexpected variable statement type, got {variable}"
-    global_context.require_variable(variable.name)
-    code = translate_invoke_statement_argument(value)
+    context.require_variable(variable.name)
+    code = translate_invoke_statement_argument(value, context)
     code.append(Term(Opcode.STORE, variable.name))
     return code
 
@@ -439,35 +453,35 @@ def translate_set_statement(set_st: Statement) -> list[Term]:
 math_opcode = {"mod": Opcode.MODULO, "+": Opcode.ADD, "-": Opcode.SUBTRACT, "*": Opcode.MULTIPLY, "/": Opcode.DIVIDE}
 
 
-def translate_math_statement(statement: Statement) -> list[Term]:
+def translate_math_statement(statement: Statement, context: ProgramContext) -> list[Term]:
     code = []
     opcode = math_opcode[statement.name]
     last_arg = statement.args[-1]
-    code.extend(translate_invoke_statement_argument(last_arg))
+    code.extend(translate_invoke_statement_argument(last_arg, context))
     code.append(Term(Opcode.PUSH))
-    if global_context.get_func_context():
-        global_context.get_func_context().on_push()
+    if context.get_func_context():
+        context.get_func_context().on_push()
     for arg in statement.args[-2::-1]:
-        code.extend(translate_invoke_statement_argument(arg))
+        code.extend(translate_invoke_statement_argument(arg, context))
         code.append(Term(opcode, Address(AddressType.RELATIVE_SPR, 0)))
         code.append(Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 0)))
     code.append(Term(Opcode.POP))
-    if global_context.get_func_context():
-        global_context.get_func_context().on_pop()
+    if context.get_func_context():
+        context.get_func_context().on_pop()
     return code
 
 
 bool_opcode = {"=": Opcode.BRANCH_ZERO, ">=": Opcode.BRANCH_GREATER_EQUALS}
 
 
-def translate_bool_statement(statement: Statement) -> list[Term]:
+def translate_bool_statement(statement: Statement, context: ProgramContext) -> list[Term]:
     code = []
     opcode = bool_opcode[statement.name]
-    code.extend(translate_invoke_statement_argument(statement.args[1]))
+    code.extend(translate_invoke_statement_argument(statement.args[1], context))
     code.append(Term(Opcode.PUSH))
-    if global_context.get_func_context():
-        global_context.get_func_context().on_push()
-    code.extend(translate_invoke_statement_argument(statement.args[0]))
+    if context.get_func_context():
+        context.get_func_context().on_push()
+    code.extend(translate_invoke_statement_argument(statement.args[0], context))
     code.extend(
         [
             Term(Opcode.COMPARE, Address(AddressType.RELATIVE_SPR, 0)),
@@ -478,16 +492,16 @@ def translate_bool_statement(statement: Statement) -> list[Term]:
             Term(Opcode.LOAD, Address(AddressType.EXACT, 1)),
         ]
     )
-    if global_context.get_func_context():
-        global_context.get_func_context().on_pop()
+    if context.get_func_context():
+        context.get_func_context().on_pop()
     return code
 
 
-def translate_if_statement(statement: Statement) -> list[Term]:
+def translate_if_statement(statement: Statement, context: ProgramContext) -> list[Term]:
     code = []
-    cond_code = translate_invoke_statement_argument(statement.args[0])
-    opt1_code = translate_invoke_statement_argument(statement.args[1])
-    opt2_code = translate_invoke_statement_argument(statement.args[2])
+    cond_code = translate_invoke_statement_argument(statement.args[0], context)
+    opt1_code = translate_invoke_statement_argument(statement.args[1], context)
+    opt2_code = translate_invoke_statement_argument(statement.args[2], context)
     opt1_code.append(Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, len(opt2_code) + 1)))
     cond_code.extend(
         [
@@ -501,8 +515,8 @@ def translate_if_statement(statement: Statement) -> list[Term]:
     return code
 
 
-def translate_defun_statement(defun: Statement) -> list[Term]:
-    predefined_code = []
+def translate_defun_statement(defun: Statement, context: ProgramContext) -> list[Term]:
+    func_code = []
     func_name = defun.args[0].name
     arguments: list[Statement] = defun.args[1].args
     func_context = FuncContext()
@@ -511,61 +525,61 @@ def translate_defun_statement(defun: Statement) -> list[Term]:
         func_context.args_table[first_argument.name] = -1
     for i, argument in enumerate(arguments[1:]):
         func_context.args_table[argument.name] = 1 + i
-    global_context.set_func_context(func_context)
-    predefined_code.extend(translate_invoke_statement_argument(defun.args[2]))
+    context.set_func_context(func_context)
+    func_code.extend(translate_invoke_statement_argument(defun.args[2], context))
+    context.set_func_context(None)
     if 0 in func_context.args_table.values():
-        predefined_code.append(Term(Opcode.POPN))
-    global_context.set_func_context(None)
-    predefined_code.append(Term(Opcode.RETURN))
-    predefined_funcs[func_name].code = predefined_code
+        func_code.append(Term(Opcode.POPN))
+    func_code.append(Term(Opcode.RETURN))
+    context.implement_func(func_name, func_code)
     return []
 
 
-def translate_invoke_statement_common(statement: Statement) -> list[Term]:
+def translate_invoke_statement_common(statement: Statement, context: ProgramContext) -> list[Term]:
     args = statement.args
     code = []
     for arg in args[-1:0:-1]:
-        code.extend(translate_invoke_statement_argument(arg))
+        code.extend(translate_invoke_statement_argument(arg, context))
         code.append(Term(Opcode.PUSH))
-        if global_context.get_func_context():
-            global_context.get_func_context().on_push()
+        if context.get_func_context():
+            context.get_func_context().on_push()
     if len(args) > 0:
-        code.extend(translate_invoke_statement_argument(args[0]))
+        code.extend(translate_invoke_statement_argument(args[0], context))
     code.append(Term(Opcode.CALL, statement.name))
     for _ in range(len(args) - 1):
         code.append(Term(Opcode.POPN))
-        if global_context.get_func_context():
-            global_context.get_func_context().on_pop()
+        if context.get_func_context():
+            context.get_func_context().on_pop()
     return code
 
 
-def translate_invoke_statement(statement: Statement) -> list[Term]:
+def translate_invoke_statement(statement: Statement, context: ProgramContext) -> list[Term]:
     if statement.name == "set":
-        return translate_set_statement(statement)
+        return translate_set_statement(statement, context)
     if statement.name in ("mod", "+", "-", "/", "*"):
-        return translate_math_statement(statement)
+        return translate_math_statement(statement, context)
     if statement.name in ("=", ">="):
-        return translate_bool_statement(statement)
+        return translate_bool_statement(statement, context)
     if statement.name == "if":
-        return translate_if_statement(statement)
+        return translate_if_statement(statement, context)
     if statement.name == "defun":
-        return translate_defun_statement(statement)
-    global_context.require_func(statement.name)
+        return translate_defun_statement(statement, context)
+    context.require_func(statement.name)
     if statement.name == "read":
-        return translate_read_statement(statement)
+        return translate_read_statement(statement, context)
     if statement.name == "printi":
-        return translate_printi_statement(statement)
-    return translate_invoke_statement_common(statement)
+        return translate_printi_statement(statement, context)
+    return translate_invoke_statement_common(statement, context)
 
 
-def translate_statement(statement: Statement) -> list[Term]:
+def translate_statement(statement: Statement, context: ProgramContext) -> list[Term]:
     if statement.tag == Tag.INVOKE:
-        return translate_invoke_statement(statement)
+        return translate_invoke_statement(statement, context)
     raise NotImplementedError(f"unknown tag of statement to translate, got {statement.tag}")
 
 
 class Code:
-    def __init__(self, context: GlobalContext, start_code: list[Term]):
+    def __init__(self, context: ProgramContext, start_code: list[Term]):
         self.data_memory: list[tuple[int, int, str, list]] = []
         self.data_pointer = 0
 
@@ -581,26 +595,26 @@ class Code:
         self.init_start_code(start_code)
         self.init_symbols()
 
-    def init_global_context(self, context: GlobalContext):
-        for symbol in sorted(context.const_table, key=str):
-            data: list
-            if isinstance(symbol, int):
-                data = [symbol]
-            elif isinstance(symbol, str):
-                data = [*symbol, "\0"]
-            else:
-                raise NotImplementedError(f"unknown symbol type, got {symbol}")
-            self.const_table[symbol] = self.data_pointer
-            self.symbols.add(str(symbol))
-            self.data_memory.append((self.data_pointer, len(data), str(symbol), data))
+    def init_global_context(self, context: ProgramContext):
+        for str_const in context.str_const_table:
+            data = [*str_const, "\0"]
+            self.const_table[str_const] = self.data_pointer
+            self.symbols.add(str_const)
+            self.data_memory.append((self.data_pointer, len(data), repr(str_const), data))
             self.data_pointer += len(data)
 
-        for symbol in sorted(context.var_table):
+        for int_const in context.int_const_table:
+            self.const_table[int_const] = self.data_pointer
+            self.symbols.add(str(int_const))
+            self.data_memory.append((self.data_pointer, 1, str(int_const), [int_const]))
+            self.data_pointer += 1
+
+        for symbol in context.var_table:
             self.var_table[symbol] = self.data_pointer
             self.symbols.add(symbol)
             self.data_pointer += 1
 
-        for symbol in sorted(context.anon_var_table):
+        for symbol in context.anon_var_table:
             offset, _ = context.anon_var_table[symbol]
             self.const_table[symbol] = self.data_pointer + offset
             self.symbols.add(symbol)
@@ -608,12 +622,12 @@ class Code:
         self.instr_memory.append((0, 1, "#", [Term(Opcode.BRANCH_ANY, "start")]))
         self.func_table["#"] = 0
         self.instr_pointer += 1
-        for func_info in context.function_table.values():
-            func_code = func_info.code
+        for func_name in context.function_table:
+            func_info = context.defined_funcs[func_name]
             self.func_table[func_info.name] = self.instr_pointer
             self.symbols.add(func_info.name)
-            self.instr_memory.append((self.instr_pointer, len(func_code), func_info.name, func_code))
-            self.instr_pointer += len(func_code)
+            self.instr_memory.append((self.instr_pointer, len(func_info.code), func_info.name, func_info.code))
+            self.instr_pointer += len(func_info.code)
 
     def init_start_code(self, start_code: list[Term]):
         self.func_table["start"] = self.instr_pointer
@@ -642,12 +656,12 @@ class Code:
         return sum(map(lambda blk: blk[1], self.instr_memory))
 
 
-def translate_into_code(statements: list[Statement]) -> Code:
+def translate_into_code(statements: list[Statement], context: ProgramContext) -> Code:
     start_code = []
     for s in statements:
-        start_code.extend(translate_statement(s))
+        start_code.extend(translate_statement(s, context))
     start_code.append(Term(Opcode.HALT))
-    return Code(global_context, start_code)
+    return Code(context, start_code)
 
 
 def translate(src: str) -> Code:
@@ -655,9 +669,11 @@ def translate(src: str) -> Code:
 
     ast = build_ast(tokens)
 
-    statements = extract_statements(ast)
+    program_context = ProgramContext()
 
-    return translate_into_code(statements)
+    statements = extract_statements(ast, program_context)
+
+    return translate_into_code(statements, program_context)
 
 
 def read_source(src: typing.TextIO) -> str:

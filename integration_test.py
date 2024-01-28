@@ -24,6 +24,11 @@ def test_translator_and_machine(golden, caplog):
         with contextlib.redirect_stdout(io.StringIO()) as stdout:
             with open(source, encoding="utf-8") as s, open(target, "wb") as t, open(debug, "w", encoding="utf-8") as d:
                 translator.main(s, t, d)
+
+            with open(debug, encoding="utf-8") as d:
+                debug_content = d.read()
+            assert debug_content == golden.out["out_debug"]
+
             with open(target, "rb") as t, open(input_stream, encoding="utf-8") as i:
                 machine.main(t, i)
 

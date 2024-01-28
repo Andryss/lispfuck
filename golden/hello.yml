@@ -4,3 +4,29 @@ in_stdin: |
 
 out_stdout: |
   Hello, world!
+out_debug: |-
+  ##### Data section #####
+  <address>      <length>       <data>
+  0x000          14             'Hello, world!'
+
+  ##### Instruction section #####
+  <address>      <hexcode>      <mnemonica>
+  #:
+  0x00000000     0x0c20000d     br *0xd             (start)
+  prints:
+  0x00000001     0x06000000     push
+  0x00000002     0x06000000     push
+  0x00000003     0x02500000     ld **spr
+  0x00000004     0x09100000     cmp #0x0
+  0x00000005     0x0a300004     brz *ipr+0x4
+  0x00000006     0x032015b4     st *0x15b4
+  0x00000007     0x0d400000     inc *spr
+  0x00000008     0x0c3ffffb     br *ipr-0x5
+  0x00000009     0x07000000     pop
+  0x0000000a     0x11400000     sub *spr
+  0x0000000b     0x08000000     popn
+  0x0000000c     0x05000000     ret
+  start:
+  0x0000000d     0x02100000     ld #0x0             (Hello, world!)
+  0x0000000e     0x04200001     call *0x1           (prints)
+  0x0000000f     0x01000000     halt
