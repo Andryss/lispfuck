@@ -531,5 +531,5 @@ if __name__ == "__main__":
         action="store_true",
         help="print verbose information during execution",
     )
-    args = parser.parse_args()
-    main(args.src, args.in_file, args.verbose)
+    namespace = parser.parse_args()
+    main(namespace.src, namespace.in_file, namespace.verbose)

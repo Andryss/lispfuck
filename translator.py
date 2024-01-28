@@ -74,6 +74,9 @@ predefined_funcs: dict[str, FuncInfo] = {
         1,
         [
             Term(Opcode.PUSH),
+            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 2)),
+            Term(Opcode.ADD, Address(AddressType.EXACT, 20)),
+            Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 2)),
             Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
             Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 2)),
             Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
@@ -136,17 +139,6 @@ predefined_funcs: dict[str, FuncInfo] = {
 }
 
 
-class FuncVars:
-    def __init__(self):
-        self.args: set[str] = set()
-
-    def add_var(self, name: str):
-        self.args.add(name)
-
-    def has_var(self, name: str) -> bool:
-        return name in self.args
-
-
 class FuncContext:
     def __init__(self):
         self.args_table: dict[str, int] = {}
@@ -176,7 +168,6 @@ class ProgramContext:
         self.anon_var_pointer = 0
         self.anon_var_counter = 0
 
-        self.func_vars: FuncVars | None = None
         self.func_context: FuncContext | None = None
 
     def require_func(self, func: str):
@@ -212,11 +203,11 @@ class ProgramContext:
         if const not in self.str_const_table:
             self.str_const_table.append(const)
 
-    def require_anon_variable(self, size: int, offset: int = 0) -> str:
+    def require_anon_variable(self, size: int) -> str:
         assert size > 0, f"negative size buffer?, got {size}"
         name = f"anon${self.anon_var_counter}"
         self.anon_var_counter += 1
-        self.anon_var_table[name] = (self.anon_var_pointer + offset, size)
+        self.anon_var_table[name] = (self.anon_var_pointer, size)
         self.anon_var_pointer += size
         return name
 
@@ -224,14 +215,22 @@ class ProgramContext:
         if name not in self.var_table:
             self.var_table.append(name)
 
-    def set_func_vars(self, fv: FuncVars | None):
-        self.func_vars = fv
-
     def set_func_context(self, fc: FuncContext | None):
         self.func_context = fc
 
     def get_func_context(self) -> FuncContext | None:
         return self.func_context
+
+    def func_context_has_in_acr(self) -> bool:
+        return self.func_context and self.func_context.has_in_acr()
+
+    def func_context_on_push(self):
+        if self.func_context:
+            self.func_context.on_push()
+
+    def func_context_on_pop(self):
+        if self.func_context:
+            self.func_context.on_pop()
 
 
 class Tag(Enum):
@@ -337,17 +336,13 @@ def defun_statement(node: ASTNode, context: ProgramContext) -> Statement:
 
     name_st = Statement(Tag.REFERENCE, name=func_name)
     args_st = Statement(Tag.INVOKE)
-    func_vars = FuncVars()
     for arg in args:
         assert arg.token.tag == lexer.ID, f"args must be ID, got {arg}"
         arg_name = arg.token.string
         args_st.args.append(Statement(Tag.REFERENCE, name=arg_name))
-        func_vars.add_var(arg_name)
 
     context.define_func(func_name, len(args_st.args))
-    context.set_func_vars(func_vars)
     body_st = ast_to_statement(children[3], context)
-    context.set_func_vars(None)
     return Statement(Tag.INVOKE, name=name, args=[name_st, args_st, body_st])
 
 
@@ -416,9 +411,9 @@ def translate_invoke_statement_argument(arg: Statement, context: ProgramContext)
 
 def translate_read_statement(read: Statement, context: ProgramContext) -> list[Term]:
     code = []
-    if context.get_func_context() and context.get_func_context().has_in_acr():
+    if context.func_context_has_in_acr():
         code.append(Term(Opcode.PUSH))
-        context.get_func_context().on_push()
+        context.func_context_on_push()
     read.anon_var_name = context.require_anon_variable(128)
     code.extend([Term(Opcode.LOAD, read.anon_var_name), Term(Opcode.CALL, read.name)])
     return code
@@ -426,18 +421,16 @@ def translate_read_statement(read: Statement, context: ProgramContext) -> list[T
 
 def translate_printi_statement(printi: Statement, context: ProgramContext) -> list[Term]:
     code = []
-    if context.get_func_context() and context.get_func_context().has_in_acr():
+    if context.func_context_has_in_acr():
         code.append(Term(Opcode.PUSH))
-        context.get_func_context().on_push()
+        context.func_context_on_push()
     context.require_func("prints")
-    printi.anon_var_name = context.require_anon_variable(21, offset=20)
+    printi.anon_var_name = context.require_anon_variable(21)
     code.extend([Term(Opcode.LOAD, printi.anon_var_name), Term(Opcode.PUSH)])
-    if context.get_func_context():
-        context.get_func_context().on_push()
+    context.func_context_on_push()
     code.extend(translate_invoke_statement_argument(printi.args[0], context))
     code.extend([Term(Opcode.CALL, printi.name), Term(Opcode.POPN)])
-    if context.get_func_context():
-        context.get_func_context().on_pop()
+    context.func_context_on_pop()
     return code
 
 
@@ -459,15 +452,13 @@ def translate_math_statement(statement: Statement, context: ProgramContext) -> l
     last_arg = statement.args[-1]
     code.extend(translate_invoke_statement_argument(last_arg, context))
     code.append(Term(Opcode.PUSH))
-    if context.get_func_context():
-        context.get_func_context().on_push()
+    context.func_context_on_push()
     for arg in statement.args[-2::-1]:
         code.extend(translate_invoke_statement_argument(arg, context))
         code.append(Term(opcode, Address(AddressType.RELATIVE_SPR, 0)))
         code.append(Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 0)))
     code.append(Term(Opcode.POP))
-    if context.get_func_context():
-        context.get_func_context().on_pop()
+    context.func_context_on_pop()
     return code
 
 
@@ -479,8 +470,7 @@ def translate_bool_statement(statement: Statement, context: ProgramContext) -> l
     opcode = bool_opcode[statement.name]
     code.extend(translate_invoke_statement_argument(statement.args[1], context))
     code.append(Term(Opcode.PUSH))
-    if context.get_func_context():
-        context.get_func_context().on_push()
+    context.func_context_on_push()
     code.extend(translate_invoke_statement_argument(statement.args[0], context))
     code.extend(
         [
@@ -492,8 +482,7 @@ def translate_bool_statement(statement: Statement, context: ProgramContext) -> l
             Term(Opcode.LOAD, Address(AddressType.EXACT, 1)),
         ]
     )
-    if context.get_func_context():
-        context.get_func_context().on_pop()
+    context.func_context_on_pop()
     return code
 
 
@@ -541,15 +530,13 @@ def translate_invoke_statement_common(statement: Statement, context: ProgramCont
     for arg in args[-1:0:-1]:
         code.extend(translate_invoke_statement_argument(arg, context))
         code.append(Term(Opcode.PUSH))
-        if context.get_func_context():
-            context.get_func_context().on_push()
+        context.func_context_on_push()
     if len(args) > 0:
         code.extend(translate_invoke_statement_argument(args[0], context))
     code.append(Term(Opcode.CALL, statement.name))
     for _ in range(len(args) - 1):
         code.append(Term(Opcode.POPN))
-        if context.get_func_context():
-            context.get_func_context().on_pop()
+        context.func_context_on_pop()
     return code
 
 
@@ -834,5 +821,5 @@ if __name__ == "__main__":
         action="store_true",
         help="print verbose information during conversion",
     )
-    args = parser.parse_args()
-    main(args.src, args.dst, args.dbg, args.verbose)
+    namespace = parser.parse_args()
+    main(namespace.src, namespace.dst, namespace.dbg, namespace.verbose)
