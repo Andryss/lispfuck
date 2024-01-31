@@ -171,7 +171,7 @@ class FuncContext:
 
 
 class ProgramContext:
-    def __init__(self, *opts):
+    def __init__(self, opts: tuple):
         self.options: tuple = opts
 
         self.defined_funcs: dict[str, FuncInfo] = copy.deepcopy(predefined_funcs)
@@ -728,12 +728,12 @@ def translate_into_code(statements: list[Statement], context: ProgramContext) ->
     return Code(context, start_code)
 
 
-def translate(src: str, *opts) -> Code:
+def translate(src: str, opts: tuple) -> Code:
     tokens = extract_tokens(src)
 
     ast = build_ast(tokens)
 
-    program_context = ProgramContext(*opts)
+    program_context = ProgramContext(opts)
 
     statements = extract_statements(ast, program_context)
 
@@ -856,12 +856,13 @@ def write_code(dst: typing.BinaryIO, dbg: typing.TextIO, code: Code) -> (bytearr
     return binary, text
 
 
-def main(src: typing.TextIO, dst: typing.BinaryIO, dbg: typing.TextIO, *opts):
+def main(src: typing.TextIO, dst: typing.BinaryIO, dbg: typing.TextIO, opts: tuple | None = None):
+    opts = () if not opts else opts
     if "verbose" in opts:
         logging.getLogger().setLevel(logging.DEBUG)
 
     source = read_source(src)
-    code = translate(source, *opts)
+    code = translate(source, opts)
     binary, debug = write_code(dst, dbg, code)
 
     loc, code_byte, code_instr, debug_lines = len(source.split("\n")), len(binary), len(code), len(debug.split("\n"))
@@ -914,4 +915,4 @@ if __name__ == "__main__":
         help="remove pop and push instructions placed next to each over",
     )
     namespace = parser.parse_args()
-    main(namespace.src, namespace.dst, namespace.dbg, *namespace.options)
+    main(namespace.src, namespace.dst, namespace.dbg, namespace.options)
