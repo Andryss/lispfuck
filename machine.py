@@ -501,8 +501,8 @@ def simulation(code: Code, input_tokens: list[str], data_memory_size: int = 0x1F
     return "".join(data_path.output_tokens), instruction_proceed, control_unit.ticks
 
 
-def main(src: typing.BinaryIO, in_file: typing.TextIO, verbose: bool = False):
-    if verbose:
+def main(src: typing.BinaryIO, in_file: typing.TextIO, *opts):
+    if "verbose" in opts:
         logging.getLogger().setLevel(logging.DEBUG)
 
     code = read_code(src)
@@ -527,9 +527,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--verbose",
         "-v",
-        dest="verbose",
-        action="store_true",
+        dest="options",
+        action="append_const",
+        const="verbose",
         help="print verbose information during execution",
     )
     namespace = parser.parse_args()
-    main(namespace.src, namespace.in_file, namespace.verbose)
+    main(namespace.src, namespace.in_file, *namespace.options)

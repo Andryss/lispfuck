@@ -114,6 +114,16 @@ predefined_funcs: dict[str, FuncInfo] = {
             Term(Opcode.RETURN),
         ],
     ),
+    "println": FuncInfo(
+        "println",
+        0,
+        [
+            Term(Opcode.LOAD, Address(AddressType.EXACT, ord("\n"))),
+            Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
+            Term(Opcode.LOAD, Address(AddressType.EXACT, 1)),
+            Term(Opcode.RETURN),
+        ],
+    ),
     "read": FuncInfo(
         "read",
         0,
@@ -161,7 +171,9 @@ class FuncContext:
 
 
 class ProgramContext:
-    def __init__(self):
+    def __init__(self, *opts):
+        self.options: tuple = opts
+
         self.defined_funcs: dict[str, FuncInfo] = copy.deepcopy(predefined_funcs)
         self.function_table: list[str] = []
 
@@ -173,6 +185,9 @@ class ProgramContext:
         self.anon_var_counter = 0
 
         self.func_context: FuncContext | None = None
+
+    def get_options(self) -> tuple:
+        return self.options
 
     def require_func(self, func: str):
         assert func in self.defined_funcs, f"Unknown func {func}"
@@ -450,7 +465,51 @@ def translate_set_statement(set_st: Statement, context: ProgramContext) -> list[
 math_opcode = {"mod": Opcode.MODULO, "+": Opcode.ADD, "-": Opcode.SUBTRACT, "*": Opcode.MULTIPLY, "/": Opcode.DIVIDE}
 
 
+def translate_math_statement_optimized(statement: Statement, context: ProgramContext) -> list[Term]:  # noqa: C901
+    code = []
+    opcode = math_opcode[statement.name]
+    invoke_args = []
+    for arg in statement.args[1:]:
+        if arg.tag == Tag.INVOKE:
+            code.extend(translate_invoke_statement(arg, context))
+            code.append(Term(Opcode.PUSH))
+            context.func_context_on_push()
+            invoke_args.insert(0, arg)
+    first = True
+    for arg in statement.args:
+        if first and arg.tag == Tag.INVOKE:
+            code.extend(translate_invoke_statement(arg, context))
+            first = False
+            continue
+        if first:
+            code.extend(translate_invoke_statement_argument(arg, context))
+            first = False
+            continue
+        if arg.tag == Tag.VALUE:
+            code.append(Term(opcode, Address(AddressType.EXACT, arg.val)))
+        elif arg.tag in (Tag.INT_CONST, Tag.STR_CONST):
+            symbol = arg.val if arg.tag == Tag.INT_CONST else arg.name
+            code.append(Term(opcode, symbol))
+        elif arg.tag == Tag.REFERENCE:
+            fc = context.get_func_context()
+            if arg.name in fc.args_table:
+                assert arg.name != fc.get_in_acr(), "Not implemented"
+                code.append(Term(opcode, Address(AddressType.RELATIVE_SPR, fc.args_table[arg.name])))
+            else:
+                code.append(Term(opcode, arg.name))
+        elif arg.tag == Tag.INVOKE:
+            code.append(Term(opcode, Address(AddressType.RELATIVE_SPR, invoke_args.index(arg))))
+        else:
+            raise NotImplementedError(f"Unknown statement tag, got {arg.tag}")
+    for i in range(len(invoke_args)):
+        code.append(Term(Opcode.POPN))
+        context.func_context_on_pop()
+    return code
+
+
 def translate_math_statement(statement: Statement, context: ProgramContext) -> list[Term]:
+    if "optimize_math" in context.get_options():
+        return translate_math_statement_optimized(statement, context)
     code = []
     opcode = math_opcode[statement.name]
     last_arg = statement.args[-1]
@@ -569,6 +628,16 @@ def translate_statement(statement: Statement, context: ProgramContext) -> list[T
     raise NotImplementedError(f"unknown tag of statement to translate, got {statement.tag}")
 
 
+def optimize_pop_push(code: list[Term]):
+    for i in range(len(code) - 2, -1, -1):
+        if code[i].op == Opcode.POP and code[i + 1].op == Opcode.PUSH:
+            code.pop(i + 1)
+            code[i] = Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0))
+        elif code[i].op == Opcode.POPN and code[i + 1].op == Opcode.PUSH:
+            code.pop(i + 1)
+            code[i] = Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 0))
+
+
 class Code:
     def __init__(self, context: ProgramContext, start_code: list[Term]):
         self.data_memory: list[tuple[int, int, str, list]] = []
@@ -583,7 +652,7 @@ class Code:
         self.func_table: dict[str, int] = {}
 
         self.init_global_context(context)
-        self.init_start_code(start_code)
+        self.init_start_code(start_code, context)
         self.init_symbols()
 
     def init_global_context(self, context: ProgramContext):
@@ -615,12 +684,16 @@ class Code:
         self.instr_pointer += 1
         for func_name in context.function_table:
             func_info = context.defined_funcs[func_name]
+            if "optimize_pop_push" in context.get_options():
+                optimize_pop_push(func_info.code)
             self.func_table[func_info.name] = self.instr_pointer
             self.symbols.add(func_info.name)
             self.instr_memory.append((self.instr_pointer, len(func_info.code), func_info.name, func_info.code))
             self.instr_pointer += len(func_info.code)
 
-    def init_start_code(self, start_code: list[Term]):
+    def init_start_code(self, start_code: list[Term], context: ProgramContext):
+        if "optimize_pop_push" in context.get_options():
+            optimize_pop_push(start_code)
         self.func_table["start"] = self.instr_pointer
         self.symbols.add("start")
         self.instr_memory.append((self.instr_pointer, len(start_code), "start", start_code))
@@ -655,12 +728,12 @@ def translate_into_code(statements: list[Statement], context: ProgramContext) ->
     return Code(context, start_code)
 
 
-def translate(src: str) -> Code:
+def translate(src: str, *opts) -> Code:
     tokens = extract_tokens(src)
 
     ast = build_ast(tokens)
 
-    program_context = ProgramContext()
+    program_context = ProgramContext(*opts)
 
     statements = extract_statements(ast, program_context)
 
@@ -783,12 +856,12 @@ def write_code(dst: typing.BinaryIO, dbg: typing.TextIO, code: Code) -> (bytearr
     return binary, text
 
 
-def main(src: typing.TextIO, dst: typing.BinaryIO, dbg: typing.TextIO, verbose: bool = False):
-    if verbose:
+def main(src: typing.TextIO, dst: typing.BinaryIO, dbg: typing.TextIO, *opts):
+    if "verbose" in opts:
         logging.getLogger().setLevel(logging.DEBUG)
 
     source = read_source(src)
-    code = translate(source)
+    code = translate(source, *opts)
     binary, debug = write_code(dst, dbg, code)
 
     loc, code_byte, code_instr, debug_lines = len(source.split("\n")), len(binary), len(code), len(debug.split("\n"))
@@ -821,9 +894,24 @@ if __name__ == "__main__":
     parser.add_argument(
         "--verbose",
         "-v",
-        dest="verbose",
-        action="store_true",
+        dest="options",
+        action="append_const",
+        const="verbose",
         help="print verbose information during conversion",
     )
+    parser.add_argument(
+        "--optimize_math",
+        dest="options",
+        action="append_const",
+        const="optimize_math",
+        help="optimize math operations (no guarantee of evaluation strategy)",
+    )
+    parser.add_argument(
+        "--optimize_pop_push",
+        dest="options",
+        action="append_const",
+        const="optimize_pop_push",
+        help="remove pop and push instructions placed next to each over",
+    )
     namespace = parser.parse_args()
-    main(namespace.src, namespace.dst, namespace.dbg, namespace.verbose)
+    main(namespace.src, namespace.dst, namespace.dbg, *namespace.options)

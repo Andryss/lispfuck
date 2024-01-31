@@ -33,7 +33,7 @@ token_expressions = [
     (r"mod", MATH),
     (r"defun", DEFUNC),
     (r"\"(.*?)\"", STR),
-    (r"[A-Za-z][A-Za-z_]*", ID),
+    (r"[A-Za-z_]*", ID),
 ]
 
 
