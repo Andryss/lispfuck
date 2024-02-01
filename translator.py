@@ -85,7 +85,7 @@ predefined_funcs: dict[str, FuncInfo] = {
             Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 2)),
             Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
             Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-            Term(Opcode.BRANCH_GREATER_EQUALS, Address(AddressType.RELATIVE_IPR, 5)),
+            Term(Opcode.BRANCH_GREATER_EQUAL, Address(AddressType.RELATIVE_IPR, 5)),
             Term(Opcode.LOAD, Address(AddressType.EXACT, ord("-"))),
             Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
             Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
@@ -107,7 +107,7 @@ predefined_funcs: dict[str, FuncInfo] = {
             Term(Opcode.PUSH),
             Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 1)),
             Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-            Term(Opcode.BRANCH_GREATER_EQUALS, Address(AddressType.RELATIVE_IPR, 2)),
+            Term(Opcode.BRANCH_GREATER_EQUAL, Address(AddressType.RELATIVE_IPR, 2)),
             Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
             Term(Opcode.POP),
             Term(Opcode.POPN),
@@ -525,7 +525,7 @@ def translate_math_statement(statement: Statement, context: ProgramContext) -> l
     return code
 
 
-bool_opcode = {"=": Opcode.BRANCH_EQUAL, ">=": Opcode.BRANCH_GREATER_EQUALS}
+bool_opcode = {"=": Opcode.BRANCH_EQUAL, ">=": Opcode.BRANCH_GREATER_EQUAL}
 
 
 def translate_bool_statement(statement: Statement, context: ProgramContext) -> list[Term]:

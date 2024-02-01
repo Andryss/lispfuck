@@ -197,7 +197,6 @@ class DataPath:
         return getattr(self, right.value)
 
     def alu(self, left: int, right: int, op: AluOp, opts: int) -> int:
-        output = 0
         left = ~left if opts & inv_left != 0 else left
         right = ~right if opts & inv_right != 0 else right
 
@@ -258,55 +257,87 @@ class ControlUnit:
         self.data_path = data_path
         self.ticks = 0
 
+        self.control_instruction_executors: dict[Opcode, typing.Callable[[Term], None]] = {
+            Opcode.HALT: self.execute_halt_control_instruction,
+            Opcode.CALL: self.execute_call_control_instruction,
+            Opcode.RETURN: self.execute_return_control_instruction,
+            Opcode.BRANCH_EQUAL: self.execute_branch_equal_control_instruction,
+            Opcode.BRANCH_GREATER_EQUAL: self.execute_branch_greater_equal_control_instruction,
+            Opcode.BRANCH_ANY: self.execute_branch_any_control_instruction,
+        }
+
+        self.ordinary_instruction_executors: dict[Opcode, typing.Callable[[], None]] = {
+            Opcode.NOOP: self.execute_noop,
+            Opcode.LOAD: self.execute_load,
+            Opcode.STORE: self.execute_store,
+            Opcode.PUSH: self.execute_push,
+            Opcode.POP: self.execute_pop,
+            Opcode.POPN: self.execute_popn,
+            Opcode.COMPARE: self.execute_compare,
+            Opcode.INCREMENT: self.execute_inc,
+            Opcode.DECREMENT: self.execute_dec,
+            Opcode.MODULO: self.execute_modulo,
+            Opcode.ADD: self.execute_add,
+            Opcode.SUBTRACT: self.execute_subtract,
+            Opcode.MULTIPLY: self.execute_multiply,
+            Opcode.DIVIDE: self.execute_divide,
+            Opcode.INVERSE: self.execute_inverse,
+        }
+
     def tick(self):
         self.ticks += 1
 
+    def execute_halt_control_instruction(self, instr: Term):
+        raise StopIteration()
+
     def execute_call_control_instruction(self, instr: Term):
-        if instr.op == Opcode.CALL:
-            assert instr.arg.kind == AddressType.ABSOLUTE, f"unsupported addressing for call, got {instr}"
-            self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.ADR, Reg.SPR], opts=inv_left)
-            self.tick()
-            self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.DAR], opts=plus_1)
-            self.tick()
-            self.data_path.signal_write_data_memory()
-            self.tick()
-            self.data_path.signal_alu(left=Reg.INR, set_regs=[Reg.IPR], opts=extend_20)
-            self.tick()
-            return
-        # RETURN
+        assert instr.arg.kind == AddressType.ABSOLUTE, f"unsupported addressing for call, got {instr}"
+        self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.ADR, Reg.SPR], opts=inv_left)
+        self.tick()
+        self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.DAR], opts=plus_1)
+        self.tick()
+        self.data_path.signal_write_data_memory()
+        self.tick()
+        self.data_path.signal_alu(left=Reg.INR, set_regs=[Reg.IPR], opts=extend_20)
+        self.tick()
+
+    def execute_pop_into(self, reg: Reg):
         self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.ADR])
         self.tick()
         self.data_path.signal_read_data_memory()
         self.tick()
-        self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.IPR])
+        self.data_path.signal_alu(right=Reg.DAR, set_regs=[reg])
         self.tick()
         self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.SPR], opts=plus_1)
         self.tick()
 
-    def execute_branch_control_instruction(self, instr: Term):
-        if instr.op == Opcode.BRANCH_EQUAL:
-            assert instr.arg.kind == AddressType.RELATIVE_IPR, f"unsupported addressing for brz, got {instr}"
-            if self.data_path.zero():
-                self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.ADR])
-                self.tick()
-                self.data_path.signal_alu(left=Reg.INR, right=Reg.ADR, set_regs=[Reg.IPR], opts=extend_20)
-                self.tick()
-            else:
-                self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.IPR], opts=plus_1)
-                self.tick()
-            return
-        if instr.op == Opcode.BRANCH_GREATER_EQUALS:
-            assert instr.arg.kind == AddressType.RELATIVE_IPR, f"unsupported addressing for brge, got {instr}"
-            if self.data_path.negative() == self.data_path.overflow():
-                self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.ADR])
-                self.tick()
-                self.data_path.signal_alu(left=Reg.INR, right=Reg.ADR, set_regs=[Reg.IPR], opts=extend_20)
-                self.tick()
-            else:
-                self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.IPR], opts=plus_1)
-                self.tick()
-            return
-        # BRANCH_ANY
+    # noinspection PyUnusedLocal
+    def execute_return_control_instruction(self, instr: Term):
+        self.execute_pop_into(Reg.IPR)
+
+    def execute_branch_equal_control_instruction(self, instr: Term):
+        assert instr.arg.kind == AddressType.RELATIVE_IPR, f"unsupported addressing for brz, got {instr}"
+        if self.data_path.zero():
+            self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.ADR])
+            self.tick()
+            self.data_path.signal_alu(left=Reg.INR, right=Reg.ADR, set_regs=[Reg.IPR], opts=extend_20)
+            self.tick()
+        else:
+            self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.IPR], opts=plus_1)
+            self.tick()
+
+    def execute_branch_greater_equal_control_instruction(self, instr: Term):
+        assert instr.arg.kind == AddressType.RELATIVE_IPR, f"unsupported addressing for brge, got {instr}"
+        if self.data_path.negative() == self.data_path.overflow():
+            self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.ADR])
+            self.tick()
+            self.data_path.signal_alu(left=Reg.INR, right=Reg.ADR, set_regs=[Reg.IPR], opts=extend_20)
+            self.tick()
+        else:
+            self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.IPR], opts=plus_1)
+            self.tick()
+
+    def execute_branch_any_control_instruction(self, instr: Term):
         assert instr.arg.kind in (
             AddressType.ABSOLUTE,
             AddressType.RELATIVE_IPR,
@@ -322,15 +353,10 @@ class ControlUnit:
 
     def execute_control_instruction(self, instr: Term) -> bool:
         opcode = instr.op
-        if opcode == Opcode.HALT:
-            raise StopIteration()
-        if opcode in (Opcode.CALL, Opcode.RETURN):
-            self.execute_call_control_instruction(instr)
-            return True
-        if opcode in (Opcode.BRANCH_EQUAL, Opcode.BRANCH_GREATER_EQUALS, Opcode.BRANCH_ANY):
-            self.execute_branch_control_instruction(instr)
-            return True
-        return False
+        if opcode not in self.control_instruction_executors:
+            return False
+        self.control_instruction_executors[opcode](instr)
+        return True
 
     def address_decode(self, instr: Term):
         addr = instr.arg
@@ -363,50 +389,47 @@ class ControlUnit:
         else:
             raise NotImplementedError(f"unsupported address type for value fetching, got {instr}")
 
-    def execute_load_store(self, instr: Term):
-        if instr.op == Opcode.LOAD:
-            self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.ACR])
-            self.tick()
-            return
-        # STORE
+    def execute_noop(self):
+        self.tick()
+
+    def execute_load(self):
+        self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.ACR])
+        self.tick()
+
+    def execute_store(self):
         self.data_path.signal_alu(left=Reg.ACR, set_regs=[Reg.DAR])
         self.tick()
         self.data_path.signal_write_data_memory()
         self.tick()
 
-    def execute_push_pop(self, instr: Term):
-        if instr.op == Opcode.PUSH:
-            self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.ADR, Reg.SPR], opts=inv_left)
-            self.tick()
-            self.data_path.signal_alu(left=Reg.ACR, set_regs=[Reg.DAR])
-            self.tick()
-            self.data_path.signal_write_data_memory()
-            self.tick()
-            return
-        if instr.op == Opcode.POP:
-            self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.ADR])
-            self.tick()
-            self.data_path.signal_read_data_memory()
-            self.tick()
-            self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.ACR])
-            self.tick()
-            self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.SPR], opts=plus_1)
-            self.tick()
-            return
-        # POPN
+    def execute_push(self):
+        self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.ADR, Reg.SPR], opts=inv_left)
+        self.tick()
+        self.data_path.signal_alu(left=Reg.ACR, set_regs=[Reg.DAR])
+        self.tick()
+        self.data_path.signal_write_data_memory()
+        self.tick()
+
+    def execute_pop(self):
+        self.execute_pop_into(Reg.ACR)
+
+    def execute_popn(self):
         self.data_path.signal_alu(right=Reg.SPR, set_regs=[Reg.SPR], opts=plus_1)
         self.tick()
 
-    def execute_inc_dec(self, instr: Term):
-        if instr.op == Opcode.INCREMENT:
-            self.data_path.signal_read_data_memory()
-            self.tick()
-            self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.DAR], opts=plus_1)
-            self.tick()
-            self.data_path.signal_write_data_memory()
-            self.tick()
-            return
-        # DECREMENT
+    def execute_compare(self):
+        self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, opts=inv_right | plus_1 | set_flags)
+        self.tick()
+
+    def execute_inc(self):
+        self.data_path.signal_read_data_memory()
+        self.tick()
+        self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.DAR], opts=plus_1)
+        self.tick()
+        self.data_path.signal_write_data_memory()
+        self.tick()
+
+    def execute_dec(self):
         self.data_path.signal_read_data_memory()
         self.tick()
         self.data_path.signal_alu(right=Reg.DAR, set_regs=[Reg.DAR], opts=inv_left)
@@ -414,47 +437,35 @@ class ControlUnit:
         self.data_path.signal_write_data_memory()
         self.tick()
 
-    def execute_math(self, instr: Term):
-        if instr.op == Opcode.MODULO:
-            self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, alu_op=AluOp.MOD, set_regs=[Reg.ACR])
-            self.tick()
-            return
-        if instr.op == Opcode.ADD:
-            self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, set_regs=[Reg.ACR])
-            self.tick()
-            return
-        if instr.op == Opcode.SUBTRACT:
-            self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, set_regs=[Reg.ACR], opts=inv_right | plus_1)
-            self.tick()
-            return
-        if instr.op == Opcode.MULTIPLY:
-            self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, alu_op=AluOp.MUL, set_regs=[Reg.ACR])
-            self.tick()
-            return
-        # DIVIDE
+    def execute_modulo(self):
+        self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, alu_op=AluOp.MOD, set_regs=[Reg.ACR])
+        self.tick()
+
+    def execute_add(self):
+        self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, set_regs=[Reg.ACR])
+        self.tick()
+
+    def execute_subtract(self):
+        self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, set_regs=[Reg.ACR], opts=inv_right | plus_1)
+        self.tick()
+
+    def execute_multiply(self):
+        self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, alu_op=AluOp.MUL, set_regs=[Reg.ACR])
+        self.tick()
+
+    def execute_divide(self):
         self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, alu_op=AluOp.DIV, set_regs=[Reg.ACR])
+        self.tick()
+
+    def execute_inverse(self):
+        self.data_path.signal_alu(left=Reg.ACR, set_regs=[Reg.ACR], opts=inv_left | plus_1)
         self.tick()
 
     def execute(self, instr: Term):
         opcode = instr.op
-        if opcode == Opcode.NOOP:
-            pass
-        elif opcode in (Opcode.LOAD, Opcode.STORE):
-            self.execute_load_store(instr)
-        elif opcode in (Opcode.PUSH, Opcode.POP, Opcode.POPN):
-            self.execute_push_pop(instr)
-        elif opcode == Opcode.COMPARE:
-            self.data_path.signal_alu(left=Reg.ACR, right=Reg.DAR, opts=inv_right | plus_1 | set_flags)
-            self.tick()
-        elif opcode in (Opcode.INCREMENT, Opcode.DECREMENT):
-            self.execute_inc_dec(instr)
-        elif opcode in (Opcode.MODULO, Opcode.ADD, Opcode.SUBTRACT, Opcode.MULTIPLY, Opcode.DIVIDE):
-            self.execute_math(instr)
-        elif opcode == Opcode.INVERSE:
-            self.data_path.signal_alu(left=Reg.ACR, set_regs=[Reg.ACR], opts=inv_left | plus_1)
-            self.tick()
-        else:
-            raise NotImplementedError(f"unsupported opcode for instruction executing, got {instr}")
+        if opcode not in self.ordinary_instruction_executors:
+            raise NotImplementedError(f"Unknown instruction, got {instr}")
+        self.ordinary_instruction_executors[opcode]()
 
     def finalize(self):
         self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.IPR], opts=plus_1)

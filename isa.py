@@ -19,7 +19,7 @@ class Opcode(Enum):
 
     COMPARE = ("cmp", 9)
     BRANCH_EQUAL = ("bre", 10)
-    BRANCH_GREATER_EQUALS = ("brge", 11)
+    BRANCH_GREATER_EQUAL = ("brge", 11)
     BRANCH_ANY = ("br", 12)
 
     INCREMENT = ("inc", 13)
@@ -39,6 +39,7 @@ addr_ops: list[Opcode] = [
     Opcode.STORE,
     Opcode.CALL,
     Opcode.BRANCH_EQUAL,
+    Opcode.BRANCH_GREATER_EQUAL,
     Opcode.BRANCH_ANY,
     Opcode.INCREMENT,
     Opcode.DECREMENT,
@@ -54,7 +55,7 @@ value_ops: list[Opcode] = [
     Opcode.DIVIDE,
 ]
 
-branch_ops: list[Opcode] = [Opcode.BRANCH_EQUAL, Opcode.BRANCH_GREATER_EQUALS, Opcode.BRANCH_ANY]
+branch_ops: list[Opcode] = [Opcode.BRANCH_EQUAL, Opcode.BRANCH_GREATER_EQUAL, Opcode.BRANCH_ANY]
 
 opcode_by_code: dict[int, Opcode] = {op.value[1]: op for op in Opcode}
 
