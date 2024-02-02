@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 import sys
 
+import stdlib
+
 RESERVED = "RESERVED"
 FUNC = "FUNC"
 INT = "INT"
@@ -18,9 +20,6 @@ token_expressions = [
     (r"#[^\n]*", None),
     (r"\(", RESERVED),
     (r"\)", RESERVED),
-    (r"prints", FUNC),
-    (r"printi", FUNC),
-    (r"read", FUNC),
     (r"set", SPECIAL),
     (r"if", SPECIAL),
     (r"=", BOOL),
@@ -35,6 +34,9 @@ token_expressions = [
     (r"\"(.*?)\"", STR),
     (r"[A-Za-z_]*", ID),
 ]
+
+for func in stdlib.ALL_FUNCS:
+    token_expressions.append((func.name, FUNC))
 
 
 class TokenInfo:

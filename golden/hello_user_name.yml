@@ -1,8 +1,8 @@
 in_source: |
-  (set name (read))
-  (prints "Hello, ")
-  (prints name)
-  (prints "!")
+  (set name (readline))
+  (print "Hello, ")
+  (print name)
+  (print "!")
 in_stdin: |
   Andrew
 
@@ -11,14 +11,14 @@ out_stdout: |
 out_debug: |-
   ##### Data memory #####
   <address>      <length>       <data>
-  0x000          8              'Hello, '
-  0x008          2              '!'
+  0x00000000     8              'Hello, '
+  0x00000008     2              '!'
 
   ##### Instruction memory #####
   <address>      <hexcode>      <mnemonica>
   #:
-  0x00000000     0x0c200025     br *0x25            (start)
-  read:
+  0x00000000     0x0c200025     br *0x25            ('start' function)
+  readline:
   0x00000001     0x06000000     push
   0x00000002     0x06000000     push
   0x00000003     0x02100000     ld #0x0
@@ -39,7 +39,7 @@ out_debug: |-
   0x00000012     0x07000000     pop
   0x00000013     0x07000000     pop
   0x00000014     0x05000000     ret
-  prints:
+  print:
   0x00000015     0x06000000     push
   0x00000016     0x02100000     ld #0x0
   0x00000017     0x06000000     push
@@ -57,13 +57,13 @@ out_debug: |-
   0x00000023     0x08000000     popn
   0x00000024     0x05000000     ret
   start:
-  0x00000025     0x0210000b     ld #0xb             (anon$0)
-  0x00000026     0x04200001     call *0x1           (read)
-  0x00000027     0x0320000a     st *0xa             (name)
-  0x00000028     0x02100000     ld #0x0             (Hello, )
-  0x00000029     0x04200015     call *0x15          (prints)
-  0x0000002a     0x0220000a     ld *0xa             (name)
-  0x0000002b     0x04200015     call *0x15          (prints)
-  0x0000002c     0x02100008     ld #0x8             (!)
-  0x0000002d     0x04200015     call *0x15          (prints)
+  0x00000025     0x0210000b     ld #0xb             ('anon$0' const)
+  0x00000026     0x04200001     call *0x1           ('readline' function)
+  0x00000027     0x0320000a     st *0xa             ('name' variable)
+  0x00000028     0x02100000     ld #0x0             ('Hello, ' const)
+  0x00000029     0x04200015     call *0x15          ('print' function)
+  0x0000002a     0x0220000a     ld *0xa             ('name' variable)
+  0x0000002b     0x04200015     call *0x15          ('print' function)
+  0x0000002c     0x02100008     ld #0x8             ('!' const)
+  0x0000002d     0x04200015     call *0x15          ('print' function)
   0x0000002e     0x01000000     halt

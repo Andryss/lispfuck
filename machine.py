@@ -9,6 +9,7 @@ from typing import AnyStr, BinaryIO
 import isa
 import translator
 from isa import Address, AddressType, Opcode, Term
+from stdlib import INPUT_PORT, OUTPUT_PORT
 
 
 class Code:
@@ -148,7 +149,7 @@ class DataPath:
 
     def signal_read_data_memory(self):
         assert self.adr < self.data_memory_size, f"adr ({self.adr}) out of data_memory_size ({self.data_memory_size})"
-        if self.adr == 5555:
+        if self.adr == INPUT_PORT:
             if len(self.input_tokens) == 0:
                 raise EOFError()
             symbol = self.input_tokens.pop(0)
@@ -158,7 +159,7 @@ class DataPath:
             self.dar = self.data_memory[self.adr]
 
     def signal_write_data_memory(self):
-        if self.adr == 5556:
+        if self.adr == OUTPUT_PORT:
             assert 0 <= self.dar <= 0x10FFFF, f"dar contains unknown symbol, got {self.dar}"
             symbol = chr(self.dar)
             logging.debug(f"output: {''.join(self.output_tokens)!r} <- {symbol!r}")

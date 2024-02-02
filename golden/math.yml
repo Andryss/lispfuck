@@ -2,7 +2,7 @@ in_source: |
   (printi (/
       (* 1 2 3 4 5)
       (* (mod 166 (- -5 -15)) (+ 2 -5 5 (- 10 10)))))
-  (println)
+  (printline)
 
   (printi (= -9223372036854775808 (+ 1 9223372036854775807)))
 in_stdin: |
@@ -13,13 +13,13 @@ out_stdout: |
 out_debug: |-
   ##### Data memory #####
   <address>      <length>       <data>
-  0x000          1              -9223372036854775808
-  0x001          1              9223372036854775807
+  0x00000000     1              -9223372036854775808
+  0x00000001     1              9223372036854775807
 
   ##### Instruction memory #####
   <address>      <hexcode>      <mnemonica>
   #:
-  0x00000000     0x0c200038     br *0x38            (start)
+  0x00000000     0x0c200038     br *0x38            ('start' function)
   printi:
   0x00000001     0x06000000     push
   0x00000002     0x02400002     ld *spr+0x2
@@ -47,7 +47,7 @@ out_debug: |-
   0x00000018     0x0c3ffff7     br *ipr-0x9
   0x00000019     0x07000000     pop
   0x0000001a     0x02400002     ld *spr+0x2
-  0x0000001b     0x04200024     call *0x24          (prints)
+  0x0000001b     0x04200024     call *0x24          ('print' function)
   0x0000001c     0x06000000     push
   0x0000001d     0x02400001     ld *spr+0x1
   0x0000001e     0x09100000     cmp #0x0
@@ -56,7 +56,7 @@ out_debug: |-
   0x00000021     0x07000000     pop
   0x00000022     0x08000000     popn
   0x00000023     0x05000000     ret
-  prints:
+  print:
   0x00000024     0x06000000     push
   0x00000025     0x02100000     ld #0x0
   0x00000026     0x06000000     push
@@ -73,13 +73,13 @@ out_debug: |-
   0x00000031     0x07000000     pop
   0x00000032     0x08000000     popn
   0x00000033     0x05000000     ret
-  println:
+  printline:
   0x00000034     0x0210000a     ld #0xa
   0x00000035     0x032015b4     st *0x15b4
   0x00000036     0x02100001     ld #0x1
   0x00000037     0x05000000     ret
   start:
-  0x00000038     0x02100002     ld #0x2             (anon$0)
+  0x00000038     0x02100002     ld #0x2             ('anon$0' const)
   0x00000039     0x06000000     push
   0x0000003a     0x0210000a     ld #0xa
   0x0000003b     0x06000000     push
@@ -132,25 +132,25 @@ out_debug: |-
   0x0000006a     0x13400000     div *spr
   0x0000006b     0x03400000     st *spr
   0x0000006c     0x07000000     pop
-  0x0000006d     0x04200001     call *0x1           (printi)
+  0x0000006d     0x04200001     call *0x1           ('printi' function)
   0x0000006e     0x08000000     popn
-  0x0000006f     0x04200034     call *0x34          (println)
-  0x00000070     0x02100017     ld #0x17            (anon$1)
+  0x0000006f     0x04200034     call *0x34          ('printline' function)
+  0x00000070     0x02100017     ld #0x17            ('anon$1' const)
   0x00000071     0x06000000     push
-  0x00000072     0x02200001     ld *0x1             (9223372036854775807)
+  0x00000072     0x02200001     ld *0x1             (9223372036854775807 const)
   0x00000073     0x06000000     push
   0x00000074     0x02100001     ld #0x1
   0x00000075     0x10400000     add *spr
   0x00000076     0x03400000     st *spr
   0x00000077     0x07000000     pop
   0x00000078     0x06000000     push
-  0x00000079     0x02200000     ld *0x0             (-9223372036854775808)
+  0x00000079     0x02200000     ld *0x0             (-9223372036854775808 const)
   0x0000007a     0x09400000     cmp *spr
   0x0000007b     0x08000000     popn
   0x0000007c     0x0a300003     bre *ipr+0x3
   0x0000007d     0x02100000     ld #0x0
   0x0000007e     0x0c300002     br *ipr+0x2
   0x0000007f     0x02100001     ld #0x1
-  0x00000080     0x04200001     call *0x1           (printi)
+  0x00000080     0x04200001     call *0x1           ('printi' function)
   0x00000081     0x08000000     popn
   0x00000082     0x01000000     halt

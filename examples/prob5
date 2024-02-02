@@ -1,15 +1,15 @@
 (defun gcd (a b)
-  (if (= b 0)
-      a
-      (gcd b (mod a b))))
+(if (= b 0)
+    a
+    (gcd b (mod a b))))
 
 (defun lcm (a b)
-  (/ (* a b) (gcd a b)))
+(/ (* a b) (gcd a b)))
 
 (defun smallest_multiple (n)
-  (if (= n 1)
-      1
-      (lcm n (smallest_multiple (- n 1)))))
+(if (= n 1)
+    1
+    (lcm n (smallest_multiple (- n 1)))))
 
-(prints "Smallest multiple: ")
+(print "Smallest multiple: ")
 (printi (smallest_multiple 20))

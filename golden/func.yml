@@ -3,14 +3,14 @@ in_source: |
       5)
 
   (printi (five))
-  (println)
+  (printline)
 
 
   (defun sum_seven (a b c d e f g)
       (+ a b c d e f g))
 
   (printi (sum_seven 1 2 3 4 5 6 7))
-  (println)
+  (printline)
 
 
   (set var "variable")
@@ -18,7 +18,7 @@ in_source: |
   (defun return_var ()
       var)
 
-  (prints (return_var))
+  (print (return_var))
 in_stdin: |
 
 out_stdout: |
@@ -28,12 +28,12 @@ out_stdout: |
 out_debug: |-
   ##### Data memory #####
   <address>      <length>       <data>
-  0x000          9              'variable'
+  0x00000000     9              'variable'
 
   ##### Instruction memory #####
   <address>      <hexcode>      <mnemonica>
   #:
-  0x00000000     0x0c200054     br *0x54            (start)
+  0x00000000     0x0c200054     br *0x54            ('start' function)
   printi:
   0x00000001     0x06000000     push
   0x00000002     0x02400002     ld *spr+0x2
@@ -61,7 +61,7 @@ out_debug: |-
   0x00000018     0x0c3ffff7     br *ipr-0x9
   0x00000019     0x07000000     pop
   0x0000001a     0x02400002     ld *spr+0x2
-  0x0000001b     0x04200024     call *0x24          (prints)
+  0x0000001b     0x04200024     call *0x24          ('print' function)
   0x0000001c     0x06000000     push
   0x0000001d     0x02400001     ld *spr+0x1
   0x0000001e     0x09100000     cmp #0x0
@@ -70,7 +70,7 @@ out_debug: |-
   0x00000021     0x07000000     pop
   0x00000022     0x08000000     popn
   0x00000023     0x05000000     ret
-  prints:
+  print:
   0x00000024     0x06000000     push
   0x00000025     0x02100000     ld #0x0
   0x00000026     0x06000000     push
@@ -90,7 +90,7 @@ out_debug: |-
   five:
   0x00000034     0x02100005     ld #0x5
   0x00000035     0x05000000     ret
-  println:
+  printline:
   0x00000036     0x0210000a     ld #0xa
   0x00000037     0x032015b4     st *0x15b4
   0x00000038     0x02100001     ld #0x1
@@ -121,16 +121,16 @@ out_debug: |-
   0x00000050     0x08000000     popn
   0x00000051     0x05000000     ret
   return_var:
-  0x00000052     0x02200009     ld *0x9             (var)
+  0x00000052     0x02200009     ld *0x9             ('var' variable)
   0x00000053     0x05000000     ret
   start:
-  0x00000054     0x0210000a     ld #0xa             (anon$0)
+  0x00000054     0x0210000a     ld #0xa             ('anon$0' const)
   0x00000055     0x06000000     push
-  0x00000056     0x04200034     call *0x34          (five)
-  0x00000057     0x04200001     call *0x1           (printi)
+  0x00000056     0x04200034     call *0x34          ('five' function)
+  0x00000057     0x04200001     call *0x1           ('printi' function)
   0x00000058     0x08000000     popn
-  0x00000059     0x04200036     call *0x36          (println)
-  0x0000005a     0x0210001f     ld #0x1f            (anon$1)
+  0x00000059     0x04200036     call *0x36          ('printline' function)
+  0x0000005a     0x0210001f     ld #0x1f            ('anon$1' const)
   0x0000005b     0x06000000     push
   0x0000005c     0x02100007     ld #0x7
   0x0000005d     0x06000000     push
@@ -145,18 +145,18 @@ out_debug: |-
   0x00000066     0x02100002     ld #0x2
   0x00000067     0x06000000     push
   0x00000068     0x02100001     ld #0x1
-  0x00000069     0x0420003a     call *0x3a          (sum_seven)
+  0x00000069     0x0420003a     call *0x3a          ('sum_seven' function)
   0x0000006a     0x08000000     popn
   0x0000006b     0x08000000     popn
   0x0000006c     0x08000000     popn
   0x0000006d     0x08000000     popn
   0x0000006e     0x08000000     popn
   0x0000006f     0x08000000     popn
-  0x00000070     0x04200001     call *0x1           (printi)
+  0x00000070     0x04200001     call *0x1           ('printi' function)
   0x00000071     0x08000000     popn
-  0x00000072     0x04200036     call *0x36          (println)
-  0x00000073     0x02100000     ld #0x0             (variable)
-  0x00000074     0x03200009     st *0x9             (var)
-  0x00000075     0x04200052     call *0x52          (return_var)
-  0x00000076     0x04200024     call *0x24          (prints)
+  0x00000072     0x04200036     call *0x36          ('printline' function)
+  0x00000073     0x02100000     ld #0x0             ('variable' const)
+  0x00000074     0x03200009     st *0x9             ('var' variable)
+  0x00000075     0x04200052     call *0x52          ('return_var' function)
+  0x00000076     0x04200024     call *0x24          ('print' function)
   0x00000077     0x01000000     halt

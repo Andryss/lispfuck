@@ -1,5 +1,5 @@
 in_source: |
-  (prints (if (prints (read)) (read) (read)))
+  (print (if (print (readline)) (readline) (readline)))
 in_stdin: |
   abc
   def
@@ -13,8 +13,8 @@ out_debug: |-
   ##### Instruction memory #####
   <address>      <hexcode>      <mnemonica>
   #:
-  0x00000000     0x0c200025     br *0x25            (start)
-  prints:
+  0x00000000     0x0c200025     br *0x25            ('start' function)
+  print:
   0x00000001     0x06000000     push
   0x00000002     0x02100000     ld #0x0
   0x00000003     0x06000000     push
@@ -31,7 +31,7 @@ out_debug: |-
   0x0000000e     0x07000000     pop
   0x0000000f     0x08000000     popn
   0x00000010     0x05000000     ret
-  read:
+  readline:
   0x00000011     0x06000000     push
   0x00000012     0x06000000     push
   0x00000013     0x02100000     ld #0x0
@@ -53,15 +53,15 @@ out_debug: |-
   0x00000023     0x07000000     pop
   0x00000024     0x05000000     ret
   start:
-  0x00000025     0x02100000     ld #0x0             (anon$0)
-  0x00000026     0x04200011     call *0x11          (read)
-  0x00000027     0x04200001     call *0x1           (prints)
+  0x00000025     0x02100000     ld #0x0             ('anon$0' const)
+  0x00000026     0x04200011     call *0x11          ('readline' function)
+  0x00000027     0x04200001     call *0x1           ('print' function)
   0x00000028     0x09100000     cmp #0x0
   0x00000029     0x0a300004     bre *ipr+0x4
-  0x0000002a     0x02100081     ld #0x81            (anon$1)
-  0x0000002b     0x04200011     call *0x11          (read)
+  0x0000002a     0x02100081     ld #0x81            ('anon$1' const)
+  0x0000002b     0x04200011     call *0x11          ('readline' function)
   0x0000002c     0x0c300003     br *ipr+0x3
-  0x0000002d     0x02100102     ld #0x102           (anon$2)
-  0x0000002e     0x04200011     call *0x11          (read)
-  0x0000002f     0x04200001     call *0x1           (prints)
+  0x0000002d     0x02100102     ld #0x102           ('anon$2' const)
+  0x0000002e     0x04200011     call *0x11          ('readline' function)
+  0x0000002f     0x04200001     call *0x1           ('print' function)
   0x00000030     0x01000000     halt

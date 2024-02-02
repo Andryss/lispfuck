@@ -1,1 +1,1 @@
-(prints (read))
+(print (readline))

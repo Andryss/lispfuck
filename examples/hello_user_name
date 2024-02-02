@@ -1,4 +1,4 @@
-(set name (read))
-(prints "Hello, ")
-(prints name)
-(prints "!")
+(set name (readline))
+(print "Hello, ")
+(print name)
+(print "!")

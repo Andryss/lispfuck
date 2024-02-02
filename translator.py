@@ -8,6 +8,7 @@ import typing
 from enum import Enum
 
 import lexer
+import stdlib
 from isa import Address, AddressType, Opcode, Term
 
 
@@ -43,114 +44,7 @@ def build_ast(tokens: list[lexer.TokenInfo]) -> ASTNode:
     return root
 
 
-class FuncInfo:
-    def __init__(self, name: str, argc: int = 0, code: list[Term] | None = None):
-        self.name = name
-        self.argc = argc
-        self.code = [] if code is None else code
-
-
-predefined_funcs: dict[str, FuncInfo] = {
-    "prints": FuncInfo(
-        "prints",
-        1,
-        [
-            Term(Opcode.PUSH),
-            Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
-            Term(Opcode.PUSH),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
-            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-            Term(Opcode.BRANCH_EQUAL, Address(AddressType.RELATIVE_IPR, 8)),
-            Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
-            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 1)),
-            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.COMPARE, Address(AddressType.EXACT, 128)),
-            Term(Opcode.BRANCH_EQUAL, Address(AddressType.RELATIVE_IPR, 2)),
-            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
-            Term(Opcode.POP),
-            Term(Opcode.POPN),
-            Term(Opcode.RETURN),
-        ],
-    ),
-    "printi": FuncInfo(
-        "printi",
-        1,
-        [
-            Term(Opcode.PUSH),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 2)),
-            Term(Opcode.ADD, Address(AddressType.EXACT, 20)),
-            Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 2)),
-            Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
-            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 2)),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-            Term(Opcode.BRANCH_GREATER_EQUAL, Address(AddressType.RELATIVE_IPR, 5)),
-            Term(Opcode.LOAD, Address(AddressType.EXACT, ord("-"))),
-            Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.INVERSE),
-            Term(Opcode.PUSH),
-            Term(Opcode.MODULO, Address(AddressType.EXACT, 10)),
-            Term(Opcode.ADD, Address(AddressType.EXACT, ord("0"))),
-            Term(Opcode.DECREMENT, Address(AddressType.RELATIVE_SPR, 3)),
-            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 3)),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.DIVIDE, Address(AddressType.EXACT, 10)),
-            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-            Term(Opcode.BRANCH_EQUAL, Address(AddressType.RELATIVE_IPR, 3)),
-            Term(Opcode.STORE, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
-            Term(Opcode.POP),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 2)),
-            Term(Opcode.CALL, "prints"),
-            Term(Opcode.PUSH),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 1)),
-            Term(Opcode.COMPARE, Address(AddressType.EXACT, 0)),
-            Term(Opcode.BRANCH_GREATER_EQUAL, Address(AddressType.RELATIVE_IPR, 2)),
-            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.POP),
-            Term(Opcode.POPN),
-            Term(Opcode.RETURN),
-        ],
-    ),
-    "println": FuncInfo(
-        "println",
-        0,
-        [
-            Term(Opcode.LOAD, Address(AddressType.EXACT, ord("\n"))),
-            Term(Opcode.STORE, Address(AddressType.ABSOLUTE, 5556)),
-            Term(Opcode.LOAD, Address(AddressType.EXACT, 1)),
-            Term(Opcode.RETURN),
-        ],
-    ),
-    "read": FuncInfo(
-        "read",
-        0,
-        [
-            Term(Opcode.PUSH),
-            Term(Opcode.PUSH),
-            Term(Opcode.LOAD, Address(AddressType.EXACT, 0)),
-            Term(Opcode.PUSH),
-            Term(Opcode.LOAD, Address(AddressType.ABSOLUTE, 5555)),
-            Term(Opcode.COMPARE, Address(AddressType.EXACT, ord("\n"))),
-            Term(Opcode.BRANCH_EQUAL, Address(AddressType.RELATIVE_IPR, 8)),
-            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
-            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 1)),
-            Term(Opcode.INCREMENT, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, 0)),
-            Term(Opcode.COMPARE, Address(AddressType.EXACT, 128)),
-            Term(Opcode.BRANCH_EQUAL, Address(AddressType.RELATIVE_IPR, 2)),
-            Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -9)),
-            Term(Opcode.LOAD, Address(AddressType.EXACT, ord("\0"))),
-            Term(Opcode.STORE, Address(AddressType.RELATIVE_INDIRECT_SPR, 1)),
-            Term(Opcode.POP),
-            Term(Opcode.POP),
-            Term(Opcode.POP),
-            Term(Opcode.RETURN),
-        ],
-    ),
-}
+predefined_funcs: dict[str, stdlib.FuncInfo] = {func.name: func for func in stdlib.ALL_FUNCS}
 
 
 class FuncContext:
@@ -174,7 +68,7 @@ class ProgramContext:
     def __init__(self, opts: tuple):
         self.options: tuple = opts
 
-        self.defined_funcs: dict[str, FuncInfo] = copy.deepcopy(predefined_funcs)
+        self.defined_funcs: dict[str, stdlib.FuncInfo] = copy.deepcopy(predefined_funcs)
         self.function_table: list[str] = []
 
         self.str_const_table: list[str] = []
@@ -197,7 +91,7 @@ class ProgramContext:
     def define_func(self, name: str, argc: int):
         assert name not in self.defined_funcs, f"Function {name} already defined"
         assert argc >= 0, f"Function must have positive or zero arguments, got {argc}"
-        self.defined_funcs[name] = FuncInfo(name, argc)
+        self.defined_funcs[name] = stdlib.FuncInfo(name, argc)
 
     def implement_func(self, name: str, code: list[Term]):
         assert name in self.defined_funcs, f"Unknown function to implement, got {name}"
@@ -206,7 +100,7 @@ class ProgramContext:
         assert len(code) > 0, f"Implementation must have at least 1 statement, got {code}"
         func_info.code = code
 
-    def func_info(self, func: str) -> FuncInfo:
+    def func_info(self, func: str) -> stdlib.FuncInfo:
         assert func in self.defined_funcs, f"Unknown func {func}"
         return self.defined_funcs[func]
 
@@ -278,7 +172,7 @@ def const_statement(node: ASTNode, context: ProgramContext) -> Statement:
         context.require_int_const(int_val)
         return Statement(Tag.INT_CONST, val=int_val)
     if token.tag == lexer.STR:
-        str_val = node.token.string
+        str_val = node.token.string.encode("raw_unicode_escape").decode("unicode_escape")
         context.require_str_const(str_val)
         return Statement(Tag.STR_CONST, name=str_val)
     raise NotImplementedError(f"unknown lex tag of constant statement, got {token.tag}")
@@ -433,7 +327,7 @@ def translate_read_statement(read: Statement, context: ProgramContext) -> list[T
     if context.func_context_has_in_acr():
         code.append(Term(Opcode.PUSH))
         context.func_context_on_push()
-    read.anon_var_name = context.require_anon_variable(129)
+    read.anon_var_name = context.require_anon_variable(stdlib.READ_LIMIT + 1)
     code.extend([Term(Opcode.LOAD, read.anon_var_name), Term(Opcode.CALL, read.name)])
     return code
 
@@ -443,7 +337,7 @@ def translate_printi_statement(printi: Statement, context: ProgramContext) -> li
     if context.func_context_has_in_acr():
         code.append(Term(Opcode.PUSH))
         context.func_context_on_push()
-    context.require_func("prints")
+    context.require_func(stdlib.PRINT_FUNC.name)
     printi.anon_var_name = context.require_anon_variable(21)
     code.extend([Term(Opcode.LOAD, printi.anon_var_name), Term(Opcode.PUSH)])
     context.func_context_on_push()
@@ -615,9 +509,9 @@ def translate_invoke_statement(statement: Statement, context: ProgramContext) ->
     if statement.name == "defun":
         return translate_defun_statement(statement, context)
     context.require_func(statement.name)
-    if statement.name == "read":
+    if statement.name == stdlib.READLINE_FUNC.name:
         return translate_read_statement(statement, context)
-    if statement.name == "printi":
+    if statement.name == stdlib.PRINT_INTEGER_FUNC.name:
         return translate_printi_statement(statement, context)
     return translate_invoke_statement_common(statement, context)
 
@@ -704,16 +598,19 @@ class Code:
             for instr in block[3]:
                 if isinstance(instr.arg, str):
                     assert instr.arg in self.symbols, f"unknown symbol, got {instr.arg}"
-                    instr.desc = instr.arg
+                    instr.desc = repr(instr.arg)
                     if instr.arg in self.const_table:
+                        instr.desc += " const"
                         instr.arg = Address(AddressType.EXACT, self.const_table[instr.arg])
                     elif instr.arg in self.var_table:
+                        instr.desc += " variable"
                         instr.arg = Address(AddressType.ABSOLUTE, self.var_table[instr.arg])
                     else:
+                        instr.desc += " function"
                         instr.arg = Address(AddressType.ABSOLUTE, self.func_table[instr.arg])
                 elif isinstance(instr.arg, int):
                     assert str(instr.arg) in self.symbols, f"unknown symbol, got {instr.arg}"
-                    instr.desc = str(instr.arg)
+                    instr.desc = f"{instr.arg} const"
                     instr.arg = Address(AddressType.ABSOLUTE, self.const_table[instr.arg])
 
     def __len__(self):
@@ -824,7 +721,7 @@ def code_to_binary(code: Code) -> bytearray:
 def text_data_memory(code: Code) -> list[str]:
     lines = ["<address>\t<length>\t<data>"]
     for block in code.data_memory:
-        addr = "0x{:03x}".format(block[0])
+        addr = "0x{:08x}".format(block[0])
         lines.append(f"{addr}\t{block[1]}\t{block[2]}")
     return lines
 
