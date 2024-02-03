@@ -81,7 +81,7 @@ def read_input(in_file: typing.TextIO) -> list[str]:
     return tokens
 
 
-class Reg(Enum):
+class Reg(tuple[str], Enum):
     ACR, IPR, INR = "acr", "ipr", "inr"
     ADR, DAR, SPR = "adr", "dar", "spr"
 
@@ -189,13 +189,13 @@ class DataPath:
         if left is None:
             return 0
         assert left in (Reg.ACR, Reg.IPR, Reg.INR), f"incorrect left register, got {left}"
-        return getattr(self, left.value)
+        return getattr(self, left.value[0])
 
     def right_alu_val(self, right: Reg | None) -> int:
         if right is None:
             return 0
         assert right in (Reg.ADR, Reg.DAR, Reg.SPR), f"incorrect right register, got {right}"
-        return getattr(self, right.value)
+        return getattr(self, right.value[0])
 
     def alu(self, left: int, right: int, op: AluOp, opts: int) -> int:
         left = ~left if opts & inv_left != 0 else left
@@ -225,7 +225,7 @@ class DataPath:
     def set_regs(self, alu_out: int, regs: list[Reg]):
         for reg in regs:
             assert reg in (Reg.ACR, Reg.IPR, Reg.INR, Reg.ADR, Reg.DAR, Reg.SPR), f"unsupported register {reg}"
-            setattr(self, reg.value, alu_out)
+            setattr(self, reg.value[0], alu_out)
 
     def signal_alu(
         self,
@@ -263,6 +263,7 @@ class ControlUnit:
             Opcode.CALL: self.execute_call_control_instruction,
             Opcode.RETURN: self.execute_return_control_instruction,
             Opcode.BRANCH_EQUAL: self.execute_branch_equal_control_instruction,
+            Opcode.BRANCH_GREATER: self.execute_branch_greater_control_instruction,
             Opcode.BRANCH_GREATER_EQUAL: self.execute_branch_greater_equal_control_instruction,
             Opcode.BRANCH_ANY: self.execute_branch_any_control_instruction,
         }
@@ -317,8 +318,19 @@ class ControlUnit:
         self.execute_pop_into(Reg.IPR)
 
     def execute_branch_equal_control_instruction(self, instr: Term):
-        assert instr.arg.kind == AddressType.RELATIVE_IPR, f"unsupported addressing for brz, got {instr}"
+        assert instr.arg.kind == AddressType.RELATIVE_IPR, f"unsupported addressing for bre, got {instr}"
         if self.data_path.zero():
+            self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.ADR])
+            self.tick()
+            self.data_path.signal_alu(left=Reg.INR, right=Reg.ADR, set_regs=[Reg.IPR], opts=extend_20)
+            self.tick()
+        else:
+            self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.IPR], opts=plus_1)
+            self.tick()
+
+    def execute_branch_greater_control_instruction(self, instr: Term):
+        assert instr.arg.kind == AddressType.RELATIVE_IPR, f"unsupported addressing for brg, got {instr}"
+        if self.data_path.negative() == self.data_path.overflow() and self.data_path.zero() is False:
             self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.ADR])
             self.tick()
             self.data_path.signal_alu(left=Reg.INR, right=Reg.ADR, set_regs=[Reg.IPR], opts=extend_20)
@@ -329,7 +341,7 @@ class ControlUnit:
 
     def execute_branch_greater_equal_control_instruction(self, instr: Term):
         assert instr.arg.kind == AddressType.RELATIVE_IPR, f"unsupported addressing for brge, got {instr}"
-        if self.data_path.negative() == self.data_path.overflow():
+        if self.data_path.negative() == self.data_path.overflow() or self.data_path.zero() is True:
             self.data_path.signal_alu(left=Reg.IPR, set_regs=[Reg.ADR])
             self.tick()
             self.data_path.signal_alu(left=Reg.INR, right=Reg.ADR, set_regs=[Reg.IPR], opts=extend_20)
@@ -481,16 +493,15 @@ class ControlUnit:
 
     def execute_next_instruction(self):
         instruction = self.program[self.data_path.get_ipr()]
-        logging.debug(instruction)
         self.data_path.set_inr(instruction)
         if not self.execute_control_instruction(instruction):
             self.execute_ordinary_instruction(instruction)
-        logging.debug(self)
+        logging.debug(f"{instruction}\t{self}".expandtabs(20))
 
     def __repr__(self):
         state_repr = f"tick={self.ticks}"
         dp_repr = f"{self.data_path}"
-        return f"{state_repr} {dp_repr}"
+        return f"{state_repr}\t{dp_repr}".expandtabs(10)
 
 
 def simulation(code: Code, input_tokens: list[str], data_memory_size: int = 0x1FFF, limit: int = 5_000):

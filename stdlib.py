@@ -13,6 +13,10 @@ class FuncInfo:
         self.code = [] if code is None else code
 
 
+"""Print string in stdout.
+Accept one string argument.
+Returns amount of printed symbols.
+"""
 PRINT_LIMIT = 128
 PRINT_FUNC = FuncInfo(
     "print",
@@ -37,6 +41,10 @@ PRINT_FUNC = FuncInfo(
     ],
 )
 
+"""Print integer in stdout.
+Accept one integer argument.
+Returns amount of printed symbols.
+"""
 PRINT_INTEGER_FUNC = FuncInfo(
     "printi",
     1,
@@ -79,6 +87,10 @@ PRINT_INTEGER_FUNC = FuncInfo(
     ],
 )
 
+"""Print newline character (\\n) in stdout.
+Accept no arguments.
+Returns amount of printed symbols (1).
+"""
 PRINT_NEWLINE_FUNC = FuncInfo(
     "printline",
     0,
@@ -90,6 +102,10 @@ PRINT_NEWLINE_FUNC = FuncInfo(
     ],
 )
 
+"""Read string from stdout (until newline character).
+Accept no arguments.
+Returns string.
+"""
 READ_LIMIT = 128
 READLINE_FUNC = FuncInfo(
     "readline",

@@ -24,6 +24,7 @@ token_expressions = [
     (r"if", SPECIAL),
     (r"=", BOOL),
     (r">=", BOOL),
+    (r">", BOOL),
     (r"[-]?[0-9]+", INT),
     (r"\+", MATH),
     (r"-", MATH),

@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 
 
-class Opcode(Enum):
+class Opcode(tuple[str, int], Enum):
     NOOP = ("noop", 0)
     HALT = ("halt", 1)
 
@@ -19,6 +19,7 @@ class Opcode(Enum):
 
     COMPARE = ("cmp", 9)
     BRANCH_EQUAL = ("bre", 10)
+    BRANCH_GREATER = ("brg", 21)
     BRANCH_GREATER_EQUAL = ("brge", 11)
     BRANCH_ANY = ("br", 12)
 
@@ -39,6 +40,7 @@ addr_ops: list[Opcode] = [
     Opcode.STORE,
     Opcode.CALL,
     Opcode.BRANCH_EQUAL,
+    Opcode.BRANCH_GREATER,
     Opcode.BRANCH_GREATER_EQUAL,
     Opcode.BRANCH_ANY,
     Opcode.INCREMENT,
@@ -55,12 +57,12 @@ value_ops: list[Opcode] = [
     Opcode.DIVIDE,
 ]
 
-branch_ops: list[Opcode] = [Opcode.BRANCH_EQUAL, Opcode.BRANCH_GREATER_EQUAL, Opcode.BRANCH_ANY]
+branch_ops: list[Opcode] = [Opcode.BRANCH_EQUAL, Opcode.BRANCH_GREATER, Opcode.BRANCH_GREATER_EQUAL, Opcode.BRANCH_ANY]
 
 opcode_by_code: dict[int, Opcode] = {op.value[1]: op for op in Opcode}
 
 
-class AddressType(Enum):
+class AddressType(tuple[str, int], Enum):
     EXACT = ("#", 1)
     ABSOLUTE = ("*", 2)
     RELATIVE_IPR = ("*ipr", 3)

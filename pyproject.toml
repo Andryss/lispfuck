@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "lispfuck"
-version = "0.0.1"
-description = "Compyter System Architecture laboratory work 3"
-authors = ["Andrey Krivosheev <335155@niuitmo.ru>"]
+version = "0.0.2"
+description = "Lispfuck language development tools. Compiler (translator) and executor."
+authors = ["Andrey Krivosheev <andr.krivosheev@gmail.com>"]
 license = "BSD"
 readme = "README.md"
 
@@ -27,6 +27,9 @@ log_format = "%(levelname)-7s %(module)s:%(funcName)-13s %(message)s"
 
 [tool.ruff]
 line-length = 120
+src = ["src"]
+
+[tool.ruff.lint]
 select = [
     # A set of chosen linter rules is specified here.
     # See https://beta.ruff.rs/docs/rules/ for more info.
@@ -92,7 +95,4 @@ ignore = [
 unfixable = [
     "ERA001", # prohibit to "auto-fix" (=remove) commented-out code
 ]
-src = ["src"]
-
-[tool.ruff.mccabe]
-max-complexity = 10
+mccabe.max-complexity = 10
