@@ -326,7 +326,8 @@ def translate_invoke_statement_argument(arg: Statement, context: ProgramContext)
                 if fc.has_in_acr():
                     arg_code.append(Term(Opcode.PUSH))
                     fc.on_push()
-                arg_code.append(Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, fc.args_table[arg.name]), arg.name))
+                desc = repr(arg.name) + " argument"
+                arg_code.append(Term(Opcode.LOAD, Address(AddressType.RELATIVE_SPR, fc.args_table[arg.name]), desc))
             else:
                 arg_code.append(Term(Opcode.LOAD, arg.name))
     return arg_code

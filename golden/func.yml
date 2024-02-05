@@ -97,24 +97,24 @@ out_debug: |-
   0x00000039     0x05000000     ret
   sum_seven:
   0x0000003a     0x06000000     push
-  0x0000003b     0x02400007     ld *spr+0x7         (g)
+  0x0000003b     0x02400007     ld *spr+0x7         ('g' argument)
   0x0000003c     0x06000000     push
-  0x0000003d     0x02400007     ld *spr+0x7         (f)
+  0x0000003d     0x02400007     ld *spr+0x7         ('f' argument)
   0x0000003e     0x10400000     add *spr
   0x0000003f     0x03400000     st *spr
-  0x00000040     0x02400006     ld *spr+0x6         (e)
+  0x00000040     0x02400006     ld *spr+0x6         ('e' argument)
   0x00000041     0x10400000     add *spr
   0x00000042     0x03400000     st *spr
-  0x00000043     0x02400005     ld *spr+0x5         (d)
+  0x00000043     0x02400005     ld *spr+0x5         ('d' argument)
   0x00000044     0x10400000     add *spr
   0x00000045     0x03400000     st *spr
-  0x00000046     0x02400004     ld *spr+0x4         (c)
+  0x00000046     0x02400004     ld *spr+0x4         ('c' argument)
   0x00000047     0x10400000     add *spr
   0x00000048     0x03400000     st *spr
-  0x00000049     0x02400003     ld *spr+0x3         (b)
+  0x00000049     0x02400003     ld *spr+0x3         ('b' argument)
   0x0000004a     0x10400000     add *spr
   0x0000004b     0x03400000     st *spr
-  0x0000004c     0x02400001     ld *spr+0x1         (a)
+  0x0000004c     0x02400001     ld *spr+0x1         ('a' argument)
   0x0000004d     0x10400000     add *spr
   0x0000004e     0x03400000     st *spr
   0x0000004f     0x07000000     pop

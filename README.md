@@ -1,62 +1,21 @@
 ## Отчет
 
 * Кривошеев Андрей Александрович, P33111
-* `lisp | acc | harv | hw | instr | binary | stream | mem | cstr | prob5 | 8bit`
-* Без усложнения
+* `lisp | acc | harv | hw | instr | binary | stream | mem | cstr | prob5`
 
 
-#### Пояснение варианта
-
----
+### Пояснение
 
 * `lisp` -- Язык программирования. Синтаксис -- синтаксис языка Lisp. S-exp.
-  * требуется поддержка функций и/или процедур;
-  * необходимо объяснить, как происходит отображение сложных выражений на регистры и память;
-  * необходимо продемонстрировать работу транслятора в случае, если количества регистров недостаточно для реализации алгоритма.
-  * Любое выражение (statement) -- expression. Примеры корректного кода (с точностью до ключевых слов):
-    * (print (if (= 1 x) "T" "F"))
-    * (setq x (if (= 1 x) 2 3))
-    * (setq x (loop ...))
-    * (print (seq x 13))
-  * Необходимо объяснить и продемонстрировать, что любое выражение (statement) -- expression.
-
 * `acc` -- Архитектура -- система команд должна быть выстроена вокруг аккумулятора.
-  * Инструкции -- изменяют значение, хранимое в аккумуляторе.
-  * Ввод-вывод осуществляется через аккумулятор.
-
 * `harv` -- Архитектура организации памяти -- Гарвардская архитектура.
-
 * `hw` -- Control Unit -- hardwired. Реализуется как часть модели.
-
 * `instr` -- Точность модели -- процессор необходимо моделировать с точностью до каждой инструкции (наблюдается состояние после каждой инструкции).
-
 * `binary` -- Представление машинного кода -- бинарное представление.
-  * Требуются настоящие бинарные файлы, а не текстовые файлы с 0 и 1.
-  * Требуется отладочный вывод в текстовый файл вида:
-    ```text
-    <address> - <HEXCODE> - <mnemonica> 
-    20 - 03340301 - add #01 <- 34 + #03
-    ```
-    
-* `stream` -- Ввод-вывод
-  * Ввод-вывод осуществляется как поток токенов. Есть в примере. Логика работы:
-    * при старте модели у вас есть буфер, в котором представлены все данные ввода (['h', 'e', 'l', 'l', 'o']);
-    * при обращении к вводу (выполнение инструкции) модель процессора получает "токен" (символ) информации;
-    * если данные в буфере кончились -- останавливайте моделирование;
-    * вывод данных реализуется аналогично, по выполнении команд в буфер вывода добавляется ещё один символ;
-    * по окончании моделирования показать все выведенные данные;
-    * логика работы с буфером реализуется в рамках модели на Python.
-
+* `stream` -- Ввод-вывод -- Ввод-вывод осуществляется как поток токенов
 * `mem` -- Ввод-вывод ISA -- memory-mapped (порты ввода-вывода отображаются в память и доступ к ним осуществляется штатными командами),
-  * отображение портов ввода-вывода в память должно конфигурироваться (можно hardcode-ом).
-
 * `cstr` -- Поддержка строк -- Null-terminated (C string)
-
 * `prob5` -- Алгоритм -- Smallest multiple. [Project Euler. Problem 5](https://projecteuler.net/problem=5)
-
-* `8bit` -- машинное слово -- 8 бит (как для памяти команд, так и для памяти данных, если они разделены).
-
----
 
 
 ### Язык программирования
@@ -64,7 +23,6 @@
 Форма Бэкуса-Наура:
 
 ```text
-
 <program> ::= <statement> | <statement> <program>
 <statement> ::= <function_definition> | <common_statement>
 
@@ -97,7 +55,6 @@
   | "V" | "W" | "X" | "Y" | "Z" | "a" | "b" | "c" | "d" | "e" | "f" | "g" 
   | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" 
   | "t" | "u" | "v" | "w" | "x" | "y" | "z" | "_"
-
 ```
 
 Код состоит из последовательности выражений, заключенных в скобки. Выражение состоит из названия и агрументов, следующих 
@@ -115,7 +72,8 @@
 На уровне языка поддерживаются математические выражения `+` - сложение, `-` - вычитание, `*` - умножение, 
 `/` - целочисленное деление, `mod` - остаток от деления.
 
-Поддерживаются операторы сравнения `=` - равно, `>=` - больше или равно. Возвращаемое значение 1 - истина, 0 - ложь.
+Поддерживаются операторы сравнения `=` - равно, `>` - больше, `>=` - больше или равно. Возвращаемое значение 1 - истина, 
+0 - ложь.
 
 Переменные можно определить при помощи функции `set` (`(set <label> <val>)`). Возвращает установленное значение. 
 Область видимости данных - глобальная.
@@ -123,8 +81,8 @@
 Также поддерживается условная конструкция `if` (`(if <cond> <opt1> <opt2>)`). Истина определяется по значению `cond`, 
 равно 0 - будет выполнен код `opt2`, иначе `opt1`.
 
-Определены функции для работы с вводом выводом: `printi`, `prints`, `read`. Функции вывода возвращают количество 
-выведенных символов, а функция чтения - прочитанную строку.
+Определены функции для работы с вводом выводом: `printi`, `print`, `printline`, `readline`. Функции вывода возвращают 
+количество выведенных символов, а функция чтения - прочитанную строку.
 
 Код выполняется последовательно сверху вниз. Внутри выражений код выполняется *справа налево*.
 
@@ -136,7 +94,8 @@
 Память инструкций имеет примерно следующий вид:
 
 ```text
-
+    +------------------------+
+    |   Instruction memory   |
     +------------------------+
     | 0: br n                |
     | 1: <func1 code>        |
@@ -147,7 +106,6 @@
     | ...                    |
     | m: halt                |
     +------------------------+
-    
 ```
 
 Машинное слово - 32 бита (8 бит - код операции, 4 бит - тип адресации, 20 бит - значение для адресации).
@@ -159,7 +117,8 @@
 Память данных имеет примерно следующий вид:
 
 ```text
-
+    +------------------------+
+    |      Data memory       |
     +------------------------+
     | 0: const 1             |
     | 1: const 2             |
@@ -172,8 +131,7 @@
     | ...                    |
     | ...                    |
     | n: stack start         |
-    +------------------------+   
-    
+    +------------------------+
 ```
 
 Машинное слово - 64 бита.
@@ -215,7 +173,6 @@
 | `acr`      | 64          | аккумулятор                                                                 |
 | `ipr`      | 64          | указатель на адрес исполняемой инструкции                                   |
 | `inr`      | 32          | содержит текущую исполняемую инструкцию                                     |
-| `bur`      | 64          | буферный регистр, используется для проведения операций между arc, ipr, inr  |
 | `adr`      | 64          | регистр адреса, используется для чтения/записи                              |
 | `dar`      | 64          | регистр данных, используется для чтения/записи                              |
 | `spr`      | 64          | указатель на вершину стека                                                  |
@@ -240,29 +197,30 @@
 
 Набор инструкций:
 
-| Инструкция    | Описание                                                          |
-|---------------|-------------------------------------------------------------------|
-| `noop`        | ничего не выполняется                                             |
-| `halt`        | останов                                                           |
-| `ld <val>`    | загрузка значения из памяти в аккумулятор                         |
-| `st <addr>`   | запись значения аккумулятора в память                             |
-| `call <addr>` | вызвать функцию по адресу (адрес возврата положить на стек)       |
-| `ret`         | возвращение из функции (адрес возврата снять со стека)            |
-| `push`        | положить значение аккумулятора на стек                            |
-| `pop`         | снять значение со стека и записать в аккумулятор                  |
-| `popn`        | снять значение со стека без записи куда-либо (spr--)              |
-| `cmp <val>`   | установить флаги по результату операции вычитания из аккумулятора |
-| `bre <addr>`  | переход по адресу если равно (Z == 1)                             |
-| `brge <addr>` | переход по адресу если значение больше или равно (N == V)         |
-| `br <addr>`   | безусловный переход по адресу                                     |
-| `inc <addr>`  | инкремент значения по адресу (без изменения аккумулятора)         |
-| `dec <addr>`  | декремент значения по адресу (без изменения аккумулятора)         |
-| `mod <val>`   | деление по модулю аккумулятора и значения                         |
-| `add <val>`   | сложить значение с аккумулятором                                  |
-| `sub <val>`   | вычесть из аккумулятора значение                                  |
-| `mul <val>`   | умножить аккумулятор на значение                                  |
-| `div <val>`   | поделить аккумулятор на значение (целочисленное деление)          |
-| `inv`         | инвертировать значение аккумулятора                               |
+| Инструкция    | Описание                                                            |
+|---------------|---------------------------------------------------------------------|
+| `noop`        | ничего не выполняется                                               |
+| `halt`        | останов                                                             |
+| `ld <val>`    | загрузка значения из памяти в аккумулятор                           |
+| `st <addr>`   | запись значения аккумулятора в память                               |
+| `call <addr>` | вызвать функцию по адресу (адрес возврата положить на стек)         |
+| `ret`         | возвращение из функции (адрес возврата снять со стека)              |
+| `push`        | положить значение аккумулятора на стек                              |
+| `pop`         | снять значение со стека и записать в аккумулятор                    |
+| `popn`        | снять значение со стека без записи куда-либо (spr--)                |
+| `cmp <val>`   | установить флаги по результату операции вычитания из аккумулятора   |
+| `bre <addr>`  | переход по адресу если равно (Z == 1)                               |
+| `brg <addr>`  | переход по адресу если значение больше (N == V and Z == 0)          |
+| `brge <addr>` | переход по адресу если значение больше или равно (N == V or Z == 1) |
+| `br <addr>`   | безусловный переход по адресу                                       |
+| `inc <addr>`  | инкремент значения по адресу (без изменения аккумулятора)           |
+| `dec <addr>`  | декремент значения по адресу (без изменения аккумулятора)           |
+| `mod <val>`   | деление по модулю аккумулятора и значения                           |
+| `add <val>`   | сложить значение с аккумулятором                                    |
+| `sub <val>`   | вычесть из аккумулятора значение                                    |
+| `mul <val>`   | умножить аккумулятор на значение                                    |
+| `div <val>`   | поделить аккумулятор на значение (целочисленное деление)            |
+| `inv`         | инвертировать значение аккумулятора                                 |
 
 где:
   * `<val>` - аргумент будет интерпретирован как значение (значение по адресу), с которым необходимо выполнить операцию
@@ -270,7 +228,7 @@
 
 Поток управления:
   * вызов `call` или возврат `ret` из функции
-  * условные `bre`, `brge` и безусловные `br` переходы
+  * условные `bre`, `brg`, `brge` и безусловные `br` переходы
   * инкремент `ipr` после любой другой инструкции
 
 Машинный код сериализуется в список 32 битных слов. Одно слово - одна инструкция. Адресация инструкций с 0 по порядку.
@@ -366,7 +324,6 @@ options:
 #### Data path
 
 ```text
-
                       latch --->+-------+                               +-------+<--- latch   
                                 |  acr  |---------+           +---------|  adr  |             
                    +----------->+-------+         |           |         +-------+<-----------+
@@ -392,13 +349,11 @@ options:
        +-------+   |                          +-------------------+                          |
                    |                                    |                                    |
                    +------------------------------------+------------------------------------+
-
 ```
 
 #### Взаимодействие с памятью данных
 
 ```text
-            
                                  read     write
                                    |        |
                                    v        v
@@ -417,7 +372,6 @@ options:
                           ^
                           |
                          sel
-                         
 ```
 
 Реализован в классе `DataPath`.
@@ -446,7 +400,6 @@ options:
 #### ControlUnit (взаимодействие с памятью инструкций)
 
 ```text
-
                                                                    +---------+
                                                                +-->|  step   |--+                 input   output
                                                    latch       |   | counter |  |                   |       ^
@@ -461,7 +414,6 @@ options:
    |                                                                                 feedback_signals     |
    |                                                                                                      |
    +------------------------------------------------------------------------------------------------------+
-                                                                                            
 ```
 
 Реализован в классе `ControlUnit`.
@@ -565,20 +517,23 @@ jobs:
 
 ```bash
 % cat ./examples/hello
-(prints "Hello, world!")
+(print "Hello,\nworld!")
+
 % cat ./examples/input/hello
-% python3 translator.py ./examples/hello -v   
+
+% python translator.py ./examples/hello -v
 INFO:root:LoC: 1 code byte: 202 code instr: 20 debug lines: 29
-% cat debug.txt 
+
+% cat debug.txt
 ##### Data memory #####
 <address>      <length>       <data>
-0x000          14             'Hello, world!'
+0x00000000     14             'Hello,\nworld!'
 
 ##### Instruction memory #####
 <address>      <hexcode>      <mnemonica>
 #:
-0x00000000     0x0c200011     br *0x11            (start)
-prints:
+0x00000000     0x0c200011     br *0x11            ('start' function)
+print:
 0x00000001     0x06000000     push
 0x00000002     0x02100000     ld #0x0
 0x00000003     0x06000000     push
@@ -596,310 +551,169 @@ prints:
 0x0000000f     0x08000000     popn
 0x00000010     0x05000000     ret
 start:
-0x00000011     0x02100000     ld #0x0             (Hello, world!)
-0x00000012     0x04200001     call *0x1           (prints)
+0x00000011     0x02100000     ld #0x0             ('Hello,\nworld!' const)
+0x00000012     0x04200001     call *0x1           ('print' function)
 0x00000013     0x01000000     halt
-% python3 machine.py target -v
-DEBUG:root:br *0x11
-DEBUG:root:tick=1 acr=0x0 ipr=0x11 inr=0xc200011 adr=0x0 dar=0x0 spr=0x1fff flr=0x0 stack_top=?
-DEBUG:root:ld #0x0
-DEBUG:root:tick=3 acr=0x0 ipr=0x12 inr=0x2100000 adr=0x0 dar=0x0 spr=0x1fff flr=0x0 stack_top=?
-DEBUG:root:call *0x1
-DEBUG:root:tick=7 acr=0x0 ipr=0x1 inr=0x4200001 adr=0x1ffe dar=0x13 spr=0x1ffe flr=0x0 stack_top=0x13
-DEBUG:root:push
-DEBUG:root:tick=10 acr=0x0 ipr=0x2 inr=0x6000000 adr=0x1ffd dar=0x0 spr=0x1ffd flr=0x0 stack_top=0x0
-DEBUG:root:ld #0x0
-DEBUG:root:tick=12 acr=0x0 ipr=0x3 inr=0x2100000 adr=0x1ffd dar=0x0 spr=0x1ffd flr=0x0 stack_top=0x0
-DEBUG:root:push
-DEBUG:root:tick=15 acr=0x0 ipr=0x4 inr=0x6000000 adr=0x1ffc dar=0x0 spr=0x1ffc flr=0x0 stack_top=0x0
-DEBUG:root:ld **spr+0x1
-DEBUG:root:tick=20 acr=0x48 ipr=0x5 inr=0x2500001 adr=0x0 dar=0x48 spr=0x1ffc flr=0x0 stack_top=0x0
-DEBUG:root:cmp #0x0
-DEBUG:root:tick=22 acr=0x48 ipr=0x6 inr=0x9100000 adr=0x0 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x0
-DEBUG:root:bre *ipr+0x8
-DEBUG:root:tick=23 acr=0x48 ipr=0x7 inr=0xa300008 adr=0x0 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x0
-DEBUG:root:st *0x15b4
+
+% python machine.py output -v
+DEBUG:root:br *0x11            tick=1    acr=0x0 ipr=0x11 inr=0xc200011 adr=0x0 dar=0x0 spr=0x1fff flr=0x0 stack_top=?
+DEBUG:root:ld #0x0             tick=3    acr=0x0 ipr=0x12 inr=0x2100000 adr=0x0 dar=0x0 spr=0x1fff flr=0x0 stack_top=?
+DEBUG:root:call *0x1           tick=7    acr=0x0 ipr=0x1 inr=0x4200001 adr=0x1ffe dar=0x13 spr=0x1ffe flr=0x0 stack_top=0x13
+DEBUG:root:push                tick=10   acr=0x0 ipr=0x2 inr=0x6000000 adr=0x1ffd dar=0x0 spr=0x1ffd flr=0x0 stack_top=0x0
+DEBUG:root:ld #0x0             tick=12   acr=0x0 ipr=0x3 inr=0x2100000 adr=0x1ffd dar=0x0 spr=0x1ffd flr=0x0 stack_top=0x0
+DEBUG:root:push                tick=15   acr=0x0 ipr=0x4 inr=0x6000000 adr=0x1ffc dar=0x0 spr=0x1ffc flr=0x0 stack_top=0x0
+DEBUG:root:ld **spr+0x1        tick=20   acr=0x48 ipr=0x5 inr=0x2500001 adr=0x0 dar=0x48 spr=0x1ffc flr=0x0 stack_top=0x0
+DEBUG:root:cmp #0x0            tick=22   acr=0x48 ipr=0x6 inr=0x9100000 adr=0x0 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x0
+DEBUG:root:bre *ipr+0x8        tick=23   acr=0x48 ipr=0x7 inr=0xa300008 adr=0x0 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x0
 DEBUG:root:output: '' <- 'H'
-DEBUG:root:tick=26 acr=0x48 ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x48 spr=0x1ffc flr=0x1 stack_top=0x0
-DEBUG:root:inc *spr+0x1
-DEBUG:root:tick=30 acr=0x48 ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x1 spr=0x1ffc flr=0x1 stack_top=0x0
-DEBUG:root:inc *spr
-DEBUG:root:tick=34 acr=0x48 ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x1 spr=0x1ffc flr=0x1 stack_top=0x1
-DEBUG:root:ld *spr
-DEBUG:root:tick=37 acr=0x1 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x1 spr=0x1ffc flr=0x1 stack_top=0x1
-DEBUG:root:cmp #0x80
-DEBUG:root:tick=39 acr=0x1 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x1
-DEBUG:root:bre *ipr+0x2
-DEBUG:root:tick=40 acr=0x1 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x1
-DEBUG:root:br *ipr+0xffff7
-DEBUG:root:tick=42 acr=0x1 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x1
-DEBUG:root:ld **spr+0x1
-DEBUG:root:tick=47 acr=0x65 ipr=0x5 inr=0x2500001 adr=0x1 dar=0x65 spr=0x1ffc flr=0x8 stack_top=0x1
-DEBUG:root:cmp #0x0
-DEBUG:root:tick=49 acr=0x65 ipr=0x6 inr=0x9100000 adr=0x1 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x1
-DEBUG:root:bre *ipr+0x8
-DEBUG:root:tick=50 acr=0x65 ipr=0x7 inr=0xa300008 adr=0x1 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x1
-DEBUG:root:st *0x15b4
+DEBUG:root:st *0x15b4          tick=26   acr=0x48 ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x48 spr=0x1ffc flr=0x1 stack_top=0x0
+DEBUG:root:inc *spr+0x1        tick=30   acr=0x48 ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x1 spr=0x1ffc flr=0x1 stack_top=0x0
+DEBUG:root:inc *spr            tick=34   acr=0x48 ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x1 spr=0x1ffc flr=0x1 stack_top=0x1
+DEBUG:root:ld *spr             tick=37   acr=0x1 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x1 spr=0x1ffc flr=0x1 stack_top=0x1
+DEBUG:root:cmp #0x80           tick=39   acr=0x1 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x1
+DEBUG:root:bre *ipr+0x2        tick=40   acr=0x1 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x1
+DEBUG:root:br *ipr+0xffff7     tick=42   acr=0x1 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x1
+DEBUG:root:ld **spr+0x1        tick=47   acr=0x65 ipr=0x5 inr=0x2500001 adr=0x1 dar=0x65 spr=0x1ffc flr=0x8 stack_top=0x1
+DEBUG:root:cmp #0x0            tick=49   acr=0x65 ipr=0x6 inr=0x9100000 adr=0x1 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x1
+DEBUG:root:bre *ipr+0x8        tick=50   acr=0x65 ipr=0x7 inr=0xa300008 adr=0x1 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x1
 DEBUG:root:output: 'H' <- 'e'
-DEBUG:root:tick=53 acr=0x65 ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x65 spr=0x1ffc flr=0x1 stack_top=0x1
-DEBUG:root:inc *spr+0x1
-DEBUG:root:tick=57 acr=0x65 ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x2 spr=0x1ffc flr=0x1 stack_top=0x1
-DEBUG:root:inc *spr
-DEBUG:root:tick=61 acr=0x65 ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x2 spr=0x1ffc flr=0x1 stack_top=0x2
-DEBUG:root:ld *spr
-DEBUG:root:tick=64 acr=0x2 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x2 spr=0x1ffc flr=0x1 stack_top=0x2
-DEBUG:root:cmp #0x80
-DEBUG:root:tick=66 acr=0x2 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x2
-DEBUG:root:bre *ipr+0x2
-DEBUG:root:tick=67 acr=0x2 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x2
-DEBUG:root:br *ipr+0xffff7
-DEBUG:root:tick=69 acr=0x2 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x2
-DEBUG:root:ld **spr+0x1
-DEBUG:root:tick=74 acr=0x6c ipr=0x5 inr=0x2500001 adr=0x2 dar=0x6c spr=0x1ffc flr=0x8 stack_top=0x2
-DEBUG:root:cmp #0x0
-DEBUG:root:tick=76 acr=0x6c ipr=0x6 inr=0x9100000 adr=0x2 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x2
-DEBUG:root:bre *ipr+0x8
-DEBUG:root:tick=77 acr=0x6c ipr=0x7 inr=0xa300008 adr=0x2 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x2
-DEBUG:root:st *0x15b4
+DEBUG:root:st *0x15b4          tick=53   acr=0x65 ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x65 spr=0x1ffc flr=0x1 stack_top=0x1
+DEBUG:root:inc *spr+0x1        tick=57   acr=0x65 ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x2 spr=0x1ffc flr=0x1 stack_top=0x1
+DEBUG:root:inc *spr            tick=61   acr=0x65 ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x2 spr=0x1ffc flr=0x1 stack_top=0x2
+DEBUG:root:ld *spr             tick=64   acr=0x2 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x2 spr=0x1ffc flr=0x1 stack_top=0x2
+DEBUG:root:cmp #0x80           tick=66   acr=0x2 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x2
+DEBUG:root:bre *ipr+0x2        tick=67   acr=0x2 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x2
+DEBUG:root:br *ipr+0xffff7     tick=69   acr=0x2 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x2
+DEBUG:root:ld **spr+0x1        tick=74   acr=0x6c ipr=0x5 inr=0x2500001 adr=0x2 dar=0x6c spr=0x1ffc flr=0x8 stack_top=0x2
+DEBUG:root:cmp #0x0            tick=76   acr=0x6c ipr=0x6 inr=0x9100000 adr=0x2 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x2
+DEBUG:root:bre *ipr+0x8        tick=77   acr=0x6c ipr=0x7 inr=0xa300008 adr=0x2 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x2
 DEBUG:root:output: 'He' <- 'l'
-DEBUG:root:tick=80 acr=0x6c ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x6c spr=0x1ffc flr=0x1 stack_top=0x2
-DEBUG:root:inc *spr+0x1
-DEBUG:root:tick=84 acr=0x6c ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x3 spr=0x1ffc flr=0x1 stack_top=0x2
-DEBUG:root:inc *spr
-DEBUG:root:tick=88 acr=0x6c ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x3 spr=0x1ffc flr=0x1 stack_top=0x3
-DEBUG:root:ld *spr
-DEBUG:root:tick=91 acr=0x3 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x3 spr=0x1ffc flr=0x1 stack_top=0x3
-DEBUG:root:cmp #0x80
-DEBUG:root:tick=93 acr=0x3 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x3
-DEBUG:root:bre *ipr+0x2
-DEBUG:root:tick=94 acr=0x3 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x3
-DEBUG:root:br *ipr+0xffff7
-DEBUG:root:tick=96 acr=0x3 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x3
-DEBUG:root:ld **spr+0x1
-DEBUG:root:tick=101 acr=0x6c ipr=0x5 inr=0x2500001 adr=0x3 dar=0x6c spr=0x1ffc flr=0x8 stack_top=0x3
-DEBUG:root:cmp #0x0
-DEBUG:root:tick=103 acr=0x6c ipr=0x6 inr=0x9100000 adr=0x3 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x3
-DEBUG:root:bre *ipr+0x8
-DEBUG:root:tick=104 acr=0x6c ipr=0x7 inr=0xa300008 adr=0x3 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x3
-DEBUG:root:st *0x15b4
+DEBUG:root:st *0x15b4          tick=80   acr=0x6c ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x6c spr=0x1ffc flr=0x1 stack_top=0x2
+DEBUG:root:inc *spr+0x1        tick=84   acr=0x6c ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x3 spr=0x1ffc flr=0x1 stack_top=0x2
+DEBUG:root:inc *spr            tick=88   acr=0x6c ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x3 spr=0x1ffc flr=0x1 stack_top=0x3
+DEBUG:root:ld *spr             tick=91   acr=0x3 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x3 spr=0x1ffc flr=0x1 stack_top=0x3
+DEBUG:root:cmp #0x80           tick=93   acr=0x3 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x3
+DEBUG:root:bre *ipr+0x2        tick=94   acr=0x3 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x3
+DEBUG:root:br *ipr+0xffff7     tick=96   acr=0x3 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x3
+DEBUG:root:ld **spr+0x1        tick=101  acr=0x6c ipr=0x5 inr=0x2500001 adr=0x3 dar=0x6c spr=0x1ffc flr=0x8 stack_top=0x3
+DEBUG:root:cmp #0x0            tick=103  acr=0x6c ipr=0x6 inr=0x9100000 adr=0x3 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x3
+DEBUG:root:bre *ipr+0x8        tick=104  acr=0x6c ipr=0x7 inr=0xa300008 adr=0x3 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x3
 DEBUG:root:output: 'Hel' <- 'l'
-DEBUG:root:tick=107 acr=0x6c ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x6c spr=0x1ffc flr=0x1 stack_top=0x3
-DEBUG:root:inc *spr+0x1
-DEBUG:root:tick=111 acr=0x6c ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x4 spr=0x1ffc flr=0x1 stack_top=0x3
-DEBUG:root:inc *spr
-DEBUG:root:tick=115 acr=0x6c ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x4 spr=0x1ffc flr=0x1 stack_top=0x4
-DEBUG:root:ld *spr
-DEBUG:root:tick=118 acr=0x4 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x4 spr=0x1ffc flr=0x1 stack_top=0x4
-DEBUG:root:cmp #0x80
-DEBUG:root:tick=120 acr=0x4 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x4
-DEBUG:root:bre *ipr+0x2
-DEBUG:root:tick=121 acr=0x4 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x4
-DEBUG:root:br *ipr+0xffff7
-DEBUG:root:tick=123 acr=0x4 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x4
-DEBUG:root:ld **spr+0x1
-DEBUG:root:tick=128 acr=0x6f ipr=0x5 inr=0x2500001 adr=0x4 dar=0x6f spr=0x1ffc flr=0x8 stack_top=0x4
-DEBUG:root:cmp #0x0
-DEBUG:root:tick=130 acr=0x6f ipr=0x6 inr=0x9100000 adr=0x4 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x4
-DEBUG:root:bre *ipr+0x8
-DEBUG:root:tick=131 acr=0x6f ipr=0x7 inr=0xa300008 adr=0x4 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x4
-DEBUG:root:st *0x15b4
+DEBUG:root:st *0x15b4          tick=107  acr=0x6c ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x6c spr=0x1ffc flr=0x1 stack_top=0x3
+DEBUG:root:inc *spr+0x1        tick=111  acr=0x6c ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x4 spr=0x1ffc flr=0x1 stack_top=0x3
+DEBUG:root:inc *spr            tick=115  acr=0x6c ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x4 spr=0x1ffc flr=0x1 stack_top=0x4
+DEBUG:root:ld *spr             tick=118  acr=0x4 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x4 spr=0x1ffc flr=0x1 stack_top=0x4
+DEBUG:root:cmp #0x80           tick=120  acr=0x4 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x4
+DEBUG:root:bre *ipr+0x2        tick=121  acr=0x4 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x4
+DEBUG:root:br *ipr+0xffff7     tick=123  acr=0x4 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x4
+DEBUG:root:ld **spr+0x1        tick=128  acr=0x6f ipr=0x5 inr=0x2500001 adr=0x4 dar=0x6f spr=0x1ffc flr=0x8 stack_top=0x4
+DEBUG:root:cmp #0x0            tick=130  acr=0x6f ipr=0x6 inr=0x9100000 adr=0x4 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x4
+DEBUG:root:bre *ipr+0x8        tick=131  acr=0x6f ipr=0x7 inr=0xa300008 adr=0x4 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x4
 DEBUG:root:output: 'Hell' <- 'o'
-DEBUG:root:tick=134 acr=0x6f ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x6f spr=0x1ffc flr=0x1 stack_top=0x4
-DEBUG:root:inc *spr+0x1
-DEBUG:root:tick=138 acr=0x6f ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x5 spr=0x1ffc flr=0x1 stack_top=0x4
-DEBUG:root:inc *spr
-DEBUG:root:tick=142 acr=0x6f ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x5 spr=0x1ffc flr=0x1 stack_top=0x5
-DEBUG:root:ld *spr
-DEBUG:root:tick=145 acr=0x5 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x5 spr=0x1ffc flr=0x1 stack_top=0x5
-DEBUG:root:cmp #0x80
-DEBUG:root:tick=147 acr=0x5 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x5
-DEBUG:root:bre *ipr+0x2
-DEBUG:root:tick=148 acr=0x5 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x5
-DEBUG:root:br *ipr+0xffff7
-DEBUG:root:tick=150 acr=0x5 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x5
-DEBUG:root:ld **spr+0x1
-DEBUG:root:tick=155 acr=0x2c ipr=0x5 inr=0x2500001 adr=0x5 dar=0x2c spr=0x1ffc flr=0x8 stack_top=0x5
-DEBUG:root:cmp #0x0
-DEBUG:root:tick=157 acr=0x2c ipr=0x6 inr=0x9100000 adr=0x5 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x5
-DEBUG:root:bre *ipr+0x8
-DEBUG:root:tick=158 acr=0x2c ipr=0x7 inr=0xa300008 adr=0x5 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x5
-DEBUG:root:st *0x15b4
+DEBUG:root:st *0x15b4          tick=134  acr=0x6f ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x6f spr=0x1ffc flr=0x1 stack_top=0x4
+DEBUG:root:inc *spr+0x1        tick=138  acr=0x6f ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x5 spr=0x1ffc flr=0x1 stack_top=0x4
+DEBUG:root:inc *spr            tick=142  acr=0x6f ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x5 spr=0x1ffc flr=0x1 stack_top=0x5
+DEBUG:root:ld *spr             tick=145  acr=0x5 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x5 spr=0x1ffc flr=0x1 stack_top=0x5
+DEBUG:root:cmp #0x80           tick=147  acr=0x5 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x5
+DEBUG:root:bre *ipr+0x2        tick=148  acr=0x5 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x5
+DEBUG:root:br *ipr+0xffff7     tick=150  acr=0x5 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x5
+DEBUG:root:ld **spr+0x1        tick=155  acr=0x2c ipr=0x5 inr=0x2500001 adr=0x5 dar=0x2c spr=0x1ffc flr=0x8 stack_top=0x5
+DEBUG:root:cmp #0x0            tick=157  acr=0x2c ipr=0x6 inr=0x9100000 adr=0x5 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x5
+DEBUG:root:bre *ipr+0x8        tick=158  acr=0x2c ipr=0x7 inr=0xa300008 adr=0x5 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x5
 DEBUG:root:output: 'Hello' <- ','
-DEBUG:root:tick=161 acr=0x2c ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x2c spr=0x1ffc flr=0x1 stack_top=0x5
-DEBUG:root:inc *spr+0x1
-DEBUG:root:tick=165 acr=0x2c ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x6 spr=0x1ffc flr=0x1 stack_top=0x5
-DEBUG:root:inc *spr
-DEBUG:root:tick=169 acr=0x2c ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x6 spr=0x1ffc flr=0x1 stack_top=0x6
-DEBUG:root:ld *spr
-DEBUG:root:tick=172 acr=0x6 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x6 spr=0x1ffc flr=0x1 stack_top=0x6
-DEBUG:root:cmp #0x80
-DEBUG:root:tick=174 acr=0x6 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x6
-DEBUG:root:bre *ipr+0x2
-DEBUG:root:tick=175 acr=0x6 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x6
-DEBUG:root:br *ipr+0xffff7
-DEBUG:root:tick=177 acr=0x6 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x6
-DEBUG:root:ld **spr+0x1
-DEBUG:root:tick=182 acr=0x20 ipr=0x5 inr=0x2500001 adr=0x6 dar=0x20 spr=0x1ffc flr=0x8 stack_top=0x6
-DEBUG:root:cmp #0x0
-DEBUG:root:tick=184 acr=0x20 ipr=0x6 inr=0x9100000 adr=0x6 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x6
-DEBUG:root:bre *ipr+0x8
-DEBUG:root:tick=185 acr=0x20 ipr=0x7 inr=0xa300008 adr=0x6 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x6
-DEBUG:root:st *0x15b4
-DEBUG:root:output: 'Hello,' <- ' '
-DEBUG:root:tick=188 acr=0x20 ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x20 spr=0x1ffc flr=0x1 stack_top=0x6
-DEBUG:root:inc *spr+0x1
-DEBUG:root:tick=192 acr=0x20 ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x7 spr=0x1ffc flr=0x1 stack_top=0x6
-DEBUG:root:inc *spr
-DEBUG:root:tick=196 acr=0x20 ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x7 spr=0x1ffc flr=0x1 stack_top=0x7
-DEBUG:root:ld *spr
-DEBUG:root:tick=199 acr=0x7 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x7 spr=0x1ffc flr=0x1 stack_top=0x7
-DEBUG:root:cmp #0x80
-DEBUG:root:tick=201 acr=0x7 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x7
-DEBUG:root:bre *ipr+0x2
-DEBUG:root:tick=202 acr=0x7 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x7
-DEBUG:root:br *ipr+0xffff7
-DEBUG:root:tick=204 acr=0x7 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x7
-DEBUG:root:ld **spr+0x1
-DEBUG:root:tick=209 acr=0x77 ipr=0x5 inr=0x2500001 adr=0x7 dar=0x77 spr=0x1ffc flr=0x8 stack_top=0x7
-DEBUG:root:cmp #0x0
-DEBUG:root:tick=211 acr=0x77 ipr=0x6 inr=0x9100000 adr=0x7 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x7
-DEBUG:root:bre *ipr+0x8
-DEBUG:root:tick=212 acr=0x77 ipr=0x7 inr=0xa300008 adr=0x7 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x7
-DEBUG:root:st *0x15b4
-DEBUG:root:output: 'Hello, ' <- 'w'
-DEBUG:root:tick=215 acr=0x77 ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x77 spr=0x1ffc flr=0x1 stack_top=0x7
-DEBUG:root:inc *spr+0x1
-DEBUG:root:tick=219 acr=0x77 ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x8 spr=0x1ffc flr=0x1 stack_top=0x7
-DEBUG:root:inc *spr
-DEBUG:root:tick=223 acr=0x77 ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x8 spr=0x1ffc flr=0x1 stack_top=0x8
-DEBUG:root:ld *spr
-DEBUG:root:tick=226 acr=0x8 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x8 spr=0x1ffc flr=0x1 stack_top=0x8
-DEBUG:root:cmp #0x80
-DEBUG:root:tick=228 acr=0x8 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x8
-DEBUG:root:bre *ipr+0x2
-DEBUG:root:tick=229 acr=0x8 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x8
-DEBUG:root:br *ipr+0xffff7
-DEBUG:root:tick=231 acr=0x8 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x8
-DEBUG:root:ld **spr+0x1
-DEBUG:root:tick=236 acr=0x6f ipr=0x5 inr=0x2500001 adr=0x8 dar=0x6f spr=0x1ffc flr=0x8 stack_top=0x8
-DEBUG:root:cmp #0x0
-DEBUG:root:tick=238 acr=0x6f ipr=0x6 inr=0x9100000 adr=0x8 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x8
-DEBUG:root:bre *ipr+0x8
-DEBUG:root:tick=239 acr=0x6f ipr=0x7 inr=0xa300008 adr=0x8 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x8
-DEBUG:root:st *0x15b4
-DEBUG:root:output: 'Hello, w' <- 'o'
-DEBUG:root:tick=242 acr=0x6f ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x6f spr=0x1ffc flr=0x1 stack_top=0x8
-DEBUG:root:inc *spr+0x1
-DEBUG:root:tick=246 acr=0x6f ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x9 spr=0x1ffc flr=0x1 stack_top=0x8
-DEBUG:root:inc *spr
-DEBUG:root:tick=250 acr=0x6f ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x9 spr=0x1ffc flr=0x1 stack_top=0x9
-DEBUG:root:ld *spr
-DEBUG:root:tick=253 acr=0x9 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x9 spr=0x1ffc flr=0x1 stack_top=0x9
-DEBUG:root:cmp #0x80
-DEBUG:root:tick=255 acr=0x9 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x9
-DEBUG:root:bre *ipr+0x2
-DEBUG:root:tick=256 acr=0x9 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x9
-DEBUG:root:br *ipr+0xffff7
-DEBUG:root:tick=258 acr=0x9 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x9
-DEBUG:root:ld **spr+0x1
-DEBUG:root:tick=263 acr=0x72 ipr=0x5 inr=0x2500001 adr=0x9 dar=0x72 spr=0x1ffc flr=0x8 stack_top=0x9
-DEBUG:root:cmp #0x0
-DEBUG:root:tick=265 acr=0x72 ipr=0x6 inr=0x9100000 adr=0x9 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x9
-DEBUG:root:bre *ipr+0x8
-DEBUG:root:tick=266 acr=0x72 ipr=0x7 inr=0xa300008 adr=0x9 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x9
-DEBUG:root:st *0x15b4
-DEBUG:root:output: 'Hello, wo' <- 'r'
-DEBUG:root:tick=269 acr=0x72 ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x72 spr=0x1ffc flr=0x1 stack_top=0x9
-DEBUG:root:inc *spr+0x1
-DEBUG:root:tick=273 acr=0x72 ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0xa spr=0x1ffc flr=0x1 stack_top=0x9
-DEBUG:root:inc *spr
-DEBUG:root:tick=277 acr=0x72 ipr=0xa inr=0xd400000 adr=0x1ffc dar=0xa spr=0x1ffc flr=0x1 stack_top=0xa
-DEBUG:root:ld *spr
-DEBUG:root:tick=280 acr=0xa ipr=0xb inr=0x2400000 adr=0x1ffc dar=0xa spr=0x1ffc flr=0x1 stack_top=0xa
-DEBUG:root:cmp #0x80
-DEBUG:root:tick=282 acr=0xa ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xa
-DEBUG:root:bre *ipr+0x2
-DEBUG:root:tick=283 acr=0xa ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xa
-DEBUG:root:br *ipr+0xffff7
-DEBUG:root:tick=285 acr=0xa ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xa
-DEBUG:root:ld **spr+0x1
-DEBUG:root:tick=290 acr=0x6c ipr=0x5 inr=0x2500001 adr=0xa dar=0x6c spr=0x1ffc flr=0x8 stack_top=0xa
-DEBUG:root:cmp #0x0
-DEBUG:root:tick=292 acr=0x6c ipr=0x6 inr=0x9100000 adr=0xa dar=0x0 spr=0x1ffc flr=0x1 stack_top=0xa
-DEBUG:root:bre *ipr+0x8
-DEBUG:root:tick=293 acr=0x6c ipr=0x7 inr=0xa300008 adr=0xa dar=0x0 spr=0x1ffc flr=0x1 stack_top=0xa
-DEBUG:root:st *0x15b4
-DEBUG:root:output: 'Hello, wor' <- 'l'
-DEBUG:root:tick=296 acr=0x6c ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x6c spr=0x1ffc flr=0x1 stack_top=0xa
-DEBUG:root:inc *spr+0x1
-DEBUG:root:tick=300 acr=0x6c ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0xb spr=0x1ffc flr=0x1 stack_top=0xa
-DEBUG:root:inc *spr
-DEBUG:root:tick=304 acr=0x6c ipr=0xa inr=0xd400000 adr=0x1ffc dar=0xb spr=0x1ffc flr=0x1 stack_top=0xb
-DEBUG:root:ld *spr
-DEBUG:root:tick=307 acr=0xb ipr=0xb inr=0x2400000 adr=0x1ffc dar=0xb spr=0x1ffc flr=0x1 stack_top=0xb
-DEBUG:root:cmp #0x80
-DEBUG:root:tick=309 acr=0xb ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xb
-DEBUG:root:bre *ipr+0x2
-DEBUG:root:tick=310 acr=0xb ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xb
-DEBUG:root:br *ipr+0xffff7
-DEBUG:root:tick=312 acr=0xb ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xb
-DEBUG:root:ld **spr+0x1
-DEBUG:root:tick=317 acr=0x64 ipr=0x5 inr=0x2500001 adr=0xb dar=0x64 spr=0x1ffc flr=0x8 stack_top=0xb
-DEBUG:root:cmp #0x0
-DEBUG:root:tick=319 acr=0x64 ipr=0x6 inr=0x9100000 adr=0xb dar=0x0 spr=0x1ffc flr=0x1 stack_top=0xb
-DEBUG:root:bre *ipr+0x8
-DEBUG:root:tick=320 acr=0x64 ipr=0x7 inr=0xa300008 adr=0xb dar=0x0 spr=0x1ffc flr=0x1 stack_top=0xb
-DEBUG:root:st *0x15b4
-DEBUG:root:output: 'Hello, worl' <- 'd'
-DEBUG:root:tick=323 acr=0x64 ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x64 spr=0x1ffc flr=0x1 stack_top=0xb
-DEBUG:root:inc *spr+0x1
-DEBUG:root:tick=327 acr=0x64 ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0xc spr=0x1ffc flr=0x1 stack_top=0xb
-DEBUG:root:inc *spr
-DEBUG:root:tick=331 acr=0x64 ipr=0xa inr=0xd400000 adr=0x1ffc dar=0xc spr=0x1ffc flr=0x1 stack_top=0xc
-DEBUG:root:ld *spr
-DEBUG:root:tick=334 acr=0xc ipr=0xb inr=0x2400000 adr=0x1ffc dar=0xc spr=0x1ffc flr=0x1 stack_top=0xc
-DEBUG:root:cmp #0x80
-DEBUG:root:tick=336 acr=0xc ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xc
-DEBUG:root:bre *ipr+0x2
-DEBUG:root:tick=337 acr=0xc ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xc
-DEBUG:root:br *ipr+0xffff7
-DEBUG:root:tick=339 acr=0xc ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xc
-DEBUG:root:ld **spr+0x1
-DEBUG:root:tick=344 acr=0x21 ipr=0x5 inr=0x2500001 adr=0xc dar=0x21 spr=0x1ffc flr=0x8 stack_top=0xc
-DEBUG:root:cmp #0x0
-DEBUG:root:tick=346 acr=0x21 ipr=0x6 inr=0x9100000 adr=0xc dar=0x0 spr=0x1ffc flr=0x1 stack_top=0xc
-DEBUG:root:bre *ipr+0x8
-DEBUG:root:tick=347 acr=0x21 ipr=0x7 inr=0xa300008 adr=0xc dar=0x0 spr=0x1ffc flr=0x1 stack_top=0xc
-DEBUG:root:st *0x15b4
-DEBUG:root:output: 'Hello, world' <- '!'
-DEBUG:root:tick=350 acr=0x21 ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x21 spr=0x1ffc flr=0x1 stack_top=0xc
-DEBUG:root:inc *spr+0x1
-DEBUG:root:tick=354 acr=0x21 ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0xd spr=0x1ffc flr=0x1 stack_top=0xc
-DEBUG:root:inc *spr
-DEBUG:root:tick=358 acr=0x21 ipr=0xa inr=0xd400000 adr=0x1ffc dar=0xd spr=0x1ffc flr=0x1 stack_top=0xd
-DEBUG:root:ld *spr
-DEBUG:root:tick=361 acr=0xd ipr=0xb inr=0x2400000 adr=0x1ffc dar=0xd spr=0x1ffc flr=0x1 stack_top=0xd
-DEBUG:root:cmp #0x80
-DEBUG:root:tick=363 acr=0xd ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xd
-DEBUG:root:bre *ipr+0x2
-DEBUG:root:tick=364 acr=0xd ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xd
-DEBUG:root:br *ipr+0xffff7
-DEBUG:root:tick=366 acr=0xd ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xd
-DEBUG:root:ld **spr+0x1
-DEBUG:root:tick=371 acr=0x0 ipr=0x5 inr=0x2500001 adr=0xd dar=0x0 spr=0x1ffc flr=0x8 stack_top=0xd
-DEBUG:root:cmp #0x0
-DEBUG:root:tick=373 acr=0x0 ipr=0x6 inr=0x9100000 adr=0xd dar=0x0 spr=0x1ffc flr=0x5 stack_top=0xd
-DEBUG:root:bre *ipr+0x8
-DEBUG:root:tick=375 acr=0x0 ipr=0xe inr=0xa300008 adr=0x6 dar=0x0 spr=0x1ffc flr=0x5 stack_top=0xd
-DEBUG:root:pop
-DEBUG:root:tick=379 acr=0xd ipr=0xf inr=0x7000000 adr=0x1ffc dar=0xd spr=0x1ffd flr=0x5 stack_top=0xd
-DEBUG:root:popn
-DEBUG:root:tick=380 acr=0xd ipr=0x10 inr=0x8000000 adr=0x1ffc dar=0xd spr=0x1ffe flr=0x5 stack_top=0x13
-DEBUG:root:ret
-DEBUG:root:tick=384 acr=0xd ipr=0x13 inr=0x5000000 adr=0x1ffe dar=0x13 spr=0x1fff flr=0x5 stack_top=?
-DEBUG:root:halt
+DEBUG:root:st *0x15b4          tick=161  acr=0x2c ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x2c spr=0x1ffc flr=0x1 stack_top=0x5
+DEBUG:root:inc *spr+0x1        tick=165  acr=0x2c ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x6 spr=0x1ffc flr=0x1 stack_top=0x5
+DEBUG:root:inc *spr            tick=169  acr=0x2c ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x6 spr=0x1ffc flr=0x1 stack_top=0x6
+DEBUG:root:ld *spr             tick=172  acr=0x6 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x6 spr=0x1ffc flr=0x1 stack_top=0x6
+DEBUG:root:cmp #0x80           tick=174  acr=0x6 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x6
+DEBUG:root:bre *ipr+0x2        tick=175  acr=0x6 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x6
+DEBUG:root:br *ipr+0xffff7     tick=177  acr=0x6 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x6
+DEBUG:root:ld **spr+0x1        tick=182  acr=0xa ipr=0x5 inr=0x2500001 adr=0x6 dar=0xa spr=0x1ffc flr=0x8 stack_top=0x6
+DEBUG:root:cmp #0x0            tick=184  acr=0xa ipr=0x6 inr=0x9100000 adr=0x6 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x6
+DEBUG:root:bre *ipr+0x8        tick=185  acr=0xa ipr=0x7 inr=0xa300008 adr=0x6 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x6
+DEBUG:root:output: 'Hello,' <- '\n'
+DEBUG:root:st *0x15b4          tick=188  acr=0xa ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0xa spr=0x1ffc flr=0x1 stack_top=0x6
+DEBUG:root:inc *spr+0x1        tick=192  acr=0xa ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x7 spr=0x1ffc flr=0x1 stack_top=0x6
+DEBUG:root:inc *spr            tick=196  acr=0xa ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x7 spr=0x1ffc flr=0x1 stack_top=0x7
+DEBUG:root:ld *spr             tick=199  acr=0x7 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x7 spr=0x1ffc flr=0x1 stack_top=0x7
+DEBUG:root:cmp #0x80           tick=201  acr=0x7 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x7
+DEBUG:root:bre *ipr+0x2        tick=202  acr=0x7 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x7
+DEBUG:root:br *ipr+0xffff7     tick=204  acr=0x7 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x7
+DEBUG:root:ld **spr+0x1        tick=209  acr=0x77 ipr=0x5 inr=0x2500001 adr=0x7 dar=0x77 spr=0x1ffc flr=0x8 stack_top=0x7
+DEBUG:root:cmp #0x0            tick=211  acr=0x77 ipr=0x6 inr=0x9100000 adr=0x7 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x7
+DEBUG:root:bre *ipr+0x8        tick=212  acr=0x77 ipr=0x7 inr=0xa300008 adr=0x7 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x7
+DEBUG:root:output: 'Hello,\n' <- 'w'
+DEBUG:root:st *0x15b4          tick=215  acr=0x77 ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x77 spr=0x1ffc flr=0x1 stack_top=0x7
+DEBUG:root:inc *spr+0x1        tick=219  acr=0x77 ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x8 spr=0x1ffc flr=0x1 stack_top=0x7
+DEBUG:root:inc *spr            tick=223  acr=0x77 ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x8 spr=0x1ffc flr=0x1 stack_top=0x8
+DEBUG:root:ld *spr             tick=226  acr=0x8 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x8 spr=0x1ffc flr=0x1 stack_top=0x8
+DEBUG:root:cmp #0x80           tick=228  acr=0x8 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x8
+DEBUG:root:bre *ipr+0x2        tick=229  acr=0x8 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x8
+DEBUG:root:br *ipr+0xffff7     tick=231  acr=0x8 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x8
+DEBUG:root:ld **spr+0x1        tick=236  acr=0x6f ipr=0x5 inr=0x2500001 adr=0x8 dar=0x6f spr=0x1ffc flr=0x8 stack_top=0x8
+DEBUG:root:cmp #0x0            tick=238  acr=0x6f ipr=0x6 inr=0x9100000 adr=0x8 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x8
+DEBUG:root:bre *ipr+0x8        tick=239  acr=0x6f ipr=0x7 inr=0xa300008 adr=0x8 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x8
+DEBUG:root:output: 'Hello,\nw' <- 'o'
+DEBUG:root:st *0x15b4          tick=242  acr=0x6f ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x6f spr=0x1ffc flr=0x1 stack_top=0x8
+DEBUG:root:inc *spr+0x1        tick=246  acr=0x6f ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0x9 spr=0x1ffc flr=0x1 stack_top=0x8
+DEBUG:root:inc *spr            tick=250  acr=0x6f ipr=0xa inr=0xd400000 adr=0x1ffc dar=0x9 spr=0x1ffc flr=0x1 stack_top=0x9
+DEBUG:root:ld *spr             tick=253  acr=0x9 ipr=0xb inr=0x2400000 adr=0x1ffc dar=0x9 spr=0x1ffc flr=0x1 stack_top=0x9
+DEBUG:root:cmp #0x80           tick=255  acr=0x9 ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x9
+DEBUG:root:bre *ipr+0x2        tick=256  acr=0x9 ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x9
+DEBUG:root:br *ipr+0xffff7     tick=258  acr=0x9 ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0x9
+DEBUG:root:ld **spr+0x1        tick=263  acr=0x72 ipr=0x5 inr=0x2500001 adr=0x9 dar=0x72 spr=0x1ffc flr=0x8 stack_top=0x9
+DEBUG:root:cmp #0x0            tick=265  acr=0x72 ipr=0x6 inr=0x9100000 adr=0x9 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x9
+DEBUG:root:bre *ipr+0x8        tick=266  acr=0x72 ipr=0x7 inr=0xa300008 adr=0x9 dar=0x0 spr=0x1ffc flr=0x1 stack_top=0x9
+DEBUG:root:output: 'Hello,\nwo' <- 'r'
+DEBUG:root:st *0x15b4          tick=269  acr=0x72 ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x72 spr=0x1ffc flr=0x1 stack_top=0x9
+DEBUG:root:inc *spr+0x1        tick=273  acr=0x72 ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0xa spr=0x1ffc flr=0x1 stack_top=0x9
+DEBUG:root:inc *spr            tick=277  acr=0x72 ipr=0xa inr=0xd400000 adr=0x1ffc dar=0xa spr=0x1ffc flr=0x1 stack_top=0xa
+DEBUG:root:ld *spr             tick=280  acr=0xa ipr=0xb inr=0x2400000 adr=0x1ffc dar=0xa spr=0x1ffc flr=0x1 stack_top=0xa
+DEBUG:root:cmp #0x80           tick=282  acr=0xa ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xa
+DEBUG:root:bre *ipr+0x2        tick=283  acr=0xa ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xa
+DEBUG:root:br *ipr+0xffff7     tick=285  acr=0xa ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xa
+DEBUG:root:ld **spr+0x1        tick=290  acr=0x6c ipr=0x5 inr=0x2500001 adr=0xa dar=0x6c spr=0x1ffc flr=0x8 stack_top=0xa
+DEBUG:root:cmp #0x0            tick=292  acr=0x6c ipr=0x6 inr=0x9100000 adr=0xa dar=0x0 spr=0x1ffc flr=0x1 stack_top=0xa
+DEBUG:root:bre *ipr+0x8        tick=293  acr=0x6c ipr=0x7 inr=0xa300008 adr=0xa dar=0x0 spr=0x1ffc flr=0x1 stack_top=0xa
+DEBUG:root:output: 'Hello,\nwor' <- 'l'
+DEBUG:root:st *0x15b4          tick=296  acr=0x6c ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x6c spr=0x1ffc flr=0x1 stack_top=0xa
+DEBUG:root:inc *spr+0x1        tick=300  acr=0x6c ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0xb spr=0x1ffc flr=0x1 stack_top=0xa
+DEBUG:root:inc *spr            tick=304  acr=0x6c ipr=0xa inr=0xd400000 adr=0x1ffc dar=0xb spr=0x1ffc flr=0x1 stack_top=0xb
+DEBUG:root:ld *spr             tick=307  acr=0xb ipr=0xb inr=0x2400000 adr=0x1ffc dar=0xb spr=0x1ffc flr=0x1 stack_top=0xb
+DEBUG:root:cmp #0x80           tick=309  acr=0xb ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xb
+DEBUG:root:bre *ipr+0x2        tick=310  acr=0xb ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xb
+DEBUG:root:br *ipr+0xffff7     tick=312  acr=0xb ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xb
+DEBUG:root:ld **spr+0x1        tick=317  acr=0x64 ipr=0x5 inr=0x2500001 adr=0xb dar=0x64 spr=0x1ffc flr=0x8 stack_top=0xb
+DEBUG:root:cmp #0x0            tick=319  acr=0x64 ipr=0x6 inr=0x9100000 adr=0xb dar=0x0 spr=0x1ffc flr=0x1 stack_top=0xb
+DEBUG:root:bre *ipr+0x8        tick=320  acr=0x64 ipr=0x7 inr=0xa300008 adr=0xb dar=0x0 spr=0x1ffc flr=0x1 stack_top=0xb
+DEBUG:root:output: 'Hello,\nworl' <- 'd'
+DEBUG:root:st *0x15b4          tick=323  acr=0x64 ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x64 spr=0x1ffc flr=0x1 stack_top=0xb
+DEBUG:root:inc *spr+0x1        tick=327  acr=0x64 ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0xc spr=0x1ffc flr=0x1 stack_top=0xb
+DEBUG:root:inc *spr            tick=331  acr=0x64 ipr=0xa inr=0xd400000 adr=0x1ffc dar=0xc spr=0x1ffc flr=0x1 stack_top=0xc
+DEBUG:root:ld *spr             tick=334  acr=0xc ipr=0xb inr=0x2400000 adr=0x1ffc dar=0xc spr=0x1ffc flr=0x1 stack_top=0xc
+DEBUG:root:cmp #0x80           tick=336  acr=0xc ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xc
+DEBUG:root:bre *ipr+0x2        tick=337  acr=0xc ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xc
+DEBUG:root:br *ipr+0xffff7     tick=339  acr=0xc ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xc
+DEBUG:root:ld **spr+0x1        tick=344  acr=0x21 ipr=0x5 inr=0x2500001 adr=0xc dar=0x21 spr=0x1ffc flr=0x8 stack_top=0xc
+DEBUG:root:cmp #0x0            tick=346  acr=0x21 ipr=0x6 inr=0x9100000 adr=0xc dar=0x0 spr=0x1ffc flr=0x1 stack_top=0xc
+DEBUG:root:bre *ipr+0x8        tick=347  acr=0x21 ipr=0x7 inr=0xa300008 adr=0xc dar=0x0 spr=0x1ffc flr=0x1 stack_top=0xc
+DEBUG:root:output: 'Hello,\nworld' <- '!'
+DEBUG:root:st *0x15b4          tick=350  acr=0x21 ipr=0x8 inr=0x32015b4 adr=0x15b4 dar=0x21 spr=0x1ffc flr=0x1 stack_top=0xc
+DEBUG:root:inc *spr+0x1        tick=354  acr=0x21 ipr=0x9 inr=0xd400001 adr=0x1ffd dar=0xd spr=0x1ffc flr=0x1 stack_top=0xc
+DEBUG:root:inc *spr            tick=358  acr=0x21 ipr=0xa inr=0xd400000 adr=0x1ffc dar=0xd spr=0x1ffc flr=0x1 stack_top=0xd
+DEBUG:root:ld *spr             tick=361  acr=0xd ipr=0xb inr=0x2400000 adr=0x1ffc dar=0xd spr=0x1ffc flr=0x1 stack_top=0xd
+DEBUG:root:cmp #0x80           tick=363  acr=0xd ipr=0xc inr=0x9100080 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xd
+DEBUG:root:bre *ipr+0x2        tick=364  acr=0xd ipr=0xd inr=0xa300002 adr=0x1ffc dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xd
+DEBUG:root:br *ipr+0xffff7     tick=366  acr=0xd ipr=0x4 inr=0xc3ffff7 adr=0xd dar=0x80 spr=0x1ffc flr=0x8 stack_top=0xd
+DEBUG:root:ld **spr+0x1        tick=371  acr=0x0 ipr=0x5 inr=0x2500001 adr=0xd dar=0x0 spr=0x1ffc flr=0x8 stack_top=0xd
+DEBUG:root:cmp #0x0            tick=373  acr=0x0 ipr=0x6 inr=0x9100000 adr=0xd dar=0x0 spr=0x1ffc flr=0x5 stack_top=0xd
+DEBUG:root:bre *ipr+0x8        tick=375  acr=0x0 ipr=0xe inr=0xa300008 adr=0x6 dar=0x0 spr=0x1ffc flr=0x5 stack_top=0xd
+DEBUG:root:pop                 tick=379  acr=0xd ipr=0xf inr=0x7000000 adr=0x1ffc dar=0xd spr=0x1ffd flr=0x5 stack_top=0xd
+DEBUG:root:popn                tick=380  acr=0xd ipr=0x10 inr=0x8000000 adr=0x1ffc dar=0xd spr=0x1ffe flr=0x5 stack_top=0x13
+DEBUG:root:ret                 tick=384  acr=0xd ipr=0x13 inr=0x5000000 adr=0x1ffe dar=0x13 spr=0x1fff flr=0x5 stack_top=?
 INFO:root:instr: 142 ticks: 384
-Hello, world!
+Hello,
+world!
 ```
 
 Пример проверки исходного кода:
@@ -923,19 +737,22 @@ integration_test.py::test_translator_and_machine[golden/hello_user_name.yml] PAS
 integration_test.py::test_translator_and_machine[golden/echo.yml] PASSED                                                                                                                                 [100%]
 
 ============================================================================================== 7 passed in 0.61s ===============================================================================================
+
 % poetry run ruff check .
+
 % poetry run ruff format .
 5 files left unchanged
 ```
 
 Статистика:
 
-| alg             | LoC | code byte | code instr | debug lines | instr | ticks |
-|-----------------|-----|-----------|------------|-------------|-------|-------|
-| hello           | 1   | 202       | 20         | 29          | 142   | 384   |
-| echo            | 1   | 174       | 41         | 50          | 126   | 348   |
-| hello_user_name | 4   | 278       | 47         | 58          | 250   | 688   |
-| prob5           | 16  | 698       | 132        | 145         | 2781  | 7266  |
-| if              | 1   | 206       | 49         | 58          | 174   | 484   |
-| math            | 6   | 550       | 131        | 143         | 191   | 534   |
-| func            | 20  | 562       | 120        | 134         | 275   | 756   |
+| alg              | LoC | code byte | code instr | debug lines | instr | ticks |
+|------------------|-----|-----------|------------|-------------|-------|-------|
+| hello            | 1   | 202       | 20         | 29          | 142   | 384   |
+| echo             | 1   | 174       | 41         | 50          | 126   | 348   |
+| hello_user_name  | 4   | 278       | 47         | 58          | 250   | 688   |
+| prob5            | 16  | 698       | 132        | 145         | 2781  | 7266  |
+| if               | 1   | 206       | 49         | 58          | 174   | 484   |
+| math             | 6   | 550       | 131        | 143         | 191   | 534   |
+| math (optimized) | 6   | 422       | 99         | 111         | 159   | 426   |
+| func             | 20  | 562       | 120        | 134         | 275   | 756   |
