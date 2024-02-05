@@ -500,28 +500,66 @@ options:
 Golden-тесты реализованы в [integration_test.py](integration_test.py), конфигурация к ним 
 находится в директории [golden](./golden).
 
-CI:
+CI реализован через GitHub Actions:
 
 ```yaml
-lint:
-  stage: test
-  image:
-    name: ryukzak/python-tools
-    entrypoint: [""]
-  script:
-    - poetry install
-    - coverage run -m pytest --verbose
-    - find . -type f -name "*.py" | xargs -t coverage report
-    - ruff format --diff .
-    - ruff check .
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry install
+
+      - name: Run tests and collect coverage
+        run: |
+          poetry run coverage run -m pytest .
+          poetry run coverage report -m
+        env:
+          CI: true
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry install
+
+      - name: Check code formatting with Ruff
+        run: poetry run ruff format --check .
+
+      - name: Run Ruff linters
+        run: poetry run ruff check .
 ```
 
 где:
-* `ryukzak/python-tools` - docker образ содержит все необходимые для проверки утилиты
-* `poetry` - управления зависимостями
-* `coverage` - формирование отчёта об уровне покрытия исходного кода
-* `pytest` - утилита для запуска тестов
-* `ruff` - утилита для форматирования и проверки стиля кодирования
+
+* `poetry` - управления зависимостями для языка программирования Python.
+* `coverage` - формирование отчёта об уровне покрытия исходного кода.
+* `pytest` - утилита для запуска тестов.
+* `ruff` - утилита для форматирования и проверки стиля кодирования.
 
 Пример использования и журнал работы процессора на примере `hello`:
 
