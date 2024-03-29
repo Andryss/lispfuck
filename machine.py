@@ -493,10 +493,11 @@ class ControlUnit:
 
     def execute_next_instruction(self):
         instruction = self.program[self.data_path.get_ipr()]
+        logging.debug(self)
+        logging.debug(instruction)
         self.data_path.set_inr(instruction)
         if not self.execute_control_instruction(instruction):
             self.execute_ordinary_instruction(instruction)
-        logging.debug(f"{instruction}\t{self}".expandtabs(20))
 
     def __repr__(self):
         state_repr = f"tick={self.ticks}"

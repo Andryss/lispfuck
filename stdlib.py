@@ -87,6 +87,20 @@ PRINT_INTEGER_FUNC = FuncInfo(
     ],
 )
 
+"""Print character in stdout.
+Accept char code.
+Returns amount of printed symbols (1).
+"""
+PRINT_CHAR_FUNC = FuncInfo(
+    "printc",
+    1,
+    [
+        Term(Opcode.STORE, Address(AddressType.ABSOLUTE, OUTPUT_PORT)),
+        Term(Opcode.LOAD, Address(AddressType.EXACT, 1)),
+        Term(Opcode.RETURN),
+    ],
+)
+
 """Print newline character (\\n) in stdout.
 Accept no arguments.
 Returns amount of printed symbols (1).
@@ -134,5 +148,18 @@ READLINE_FUNC = FuncInfo(
     ],
 )
 
+"""Read char from stdout.
+Accept no arguments.
+Returns int char code.
+"""
+READCHAR_FUNC = FuncInfo(
+    "readchar",
+    0,
+    [
+        Term(Opcode.LOAD, Address(AddressType.ABSOLUTE, INPUT_PORT)),
+        Term(Opcode.RETURN),
+    ],
+)
 
-ALL_FUNCS = [PRINT_FUNC, PRINT_INTEGER_FUNC, PRINT_NEWLINE_FUNC, READLINE_FUNC]
+
+ALL_FUNCS = [PRINT_FUNC, PRINT_INTEGER_FUNC, PRINT_CHAR_FUNC, PRINT_NEWLINE_FUNC, READLINE_FUNC, READCHAR_FUNC]

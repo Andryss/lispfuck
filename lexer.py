@@ -22,6 +22,7 @@ token_expressions = [
     (r"\)", RESERVED),
     (r"set", SPECIAL),
     (r"if", SPECIAL),
+    (r"loop", SPECIAL),
     (r"=", BOOL),
     (r">=", BOOL),
     (r">", BOOL),

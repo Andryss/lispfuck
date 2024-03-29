@@ -194,7 +194,7 @@ def invoke_statement(node: ASTNode, context: ProgramContext) -> Statement:
 def special_statement(node: ASTNode, context: ProgramContext) -> Statement:
     children = node.children
     name = children[0].token.string
-    assert name in ("set", "if"), f"unknown special statement, got {name}"
+    assert name in ("set", "if", "loop"), f"unknown special statement, got {name}"
     match name:
         case "set":
             assert len(children) == 3, "Set statement must contains of variable name and value to set"
@@ -207,6 +207,11 @@ def special_statement(node: ASTNode, context: ProgramContext) -> Statement:
             assert len(children) == 4, "if statement must contains condition and 2 options"
             cond, opt1, opt2 = children[1], children[2], children[3]
             args = [ast_to_statement(cond, context), ast_to_statement(opt1, context), ast_to_statement(opt2, context)]
+            return Statement(Tag.INVOKE, name=name, args=args)
+        case "loop":
+            assert len(children) == 2, "loop statement must contains of only one statement"
+            loop = children[1]
+            args = [ast_to_statement(loop, context)]
             return Statement(Tag.INVOKE, name=name, args=args)
 
 
@@ -498,6 +503,13 @@ def translate_defun_statement(defun: Statement, context: ProgramContext) -> list
     return []
 
 
+def translate_loop_statement(statement: Statement, context: ProgramContext):
+    code = []
+    code.extend(translate_invoke_statement_argument(statement.args[0], context))
+    code.append(Term(Opcode.BRANCH_ANY, Address(AddressType.RELATIVE_IPR, -len(code))))
+    return code
+
+
 def translate_invoke_statement_common(statement: Statement, context: ProgramContext) -> list[Term]:
     args = statement.args
     code = []
@@ -532,6 +544,8 @@ def translate_invoke_statement(statement: Statement, context: ProgramContext) ->
             return translate_if_statement(statement, context)
         case "defun":
             return translate_defun_statement(statement, context)
+        case "loop":
+            return translate_loop_statement(statement, context)
     context.require_func(statement.name)
     if statement.name in special_invoke_statement_translators:
         return special_invoke_statement_translators[statement.name](statement, context)

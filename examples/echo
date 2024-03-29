@@ -1,1 +1,1 @@
-(print (readline))
+(loop (printc (readchar)))
