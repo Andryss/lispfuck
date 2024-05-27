@@ -1,0 +1,11 @@
+(defun fibonacci_sum_even (a b limit)
+  (if (> b limit)
+      0
+      (+ (if (= 0 (mod b 2)) b 0)
+         (fibonacci_sum_even b (+ a b) limit))))
+
+(defun euler_problem (limit)
+  (fibonacci_sum_even 1 2 limit))
+
+(print "Sum of the even-valued terms below 4 miliion: ")
+(printi (euler_problem 4000000))
